@@ -1,0 +1,21 @@
+flowchart LR
+  TP[Trading Partners] -->|SFTP Upload| STG[Landing Storage]
+  STG -->|Blob Created| EV[Event Grid]
+  EV --> ADF[ADF Ingest Pipeline]
+  ADF -->|Validate & Copy Raw| RAW[Raw Zone]
+  ADF -->|Invoke| ROUTER[Router Function]
+  ROUTER --> SB[Service Bus Topic edi-routing]
+  SB --> SUB1[Eligibility]
+  SB --> SUB2[Claims]
+  SB --> SUB3[Enrollment]
+  SB --> SUB4[Remittance]
+  SUB1 --> OUTQ[Outcome Staging]
+  SUB2 --> OUTQ
+  SUB3 --> OUTQ
+  SUB4 --> OUTQ
+  OUTQ --> ORCH[Outbound Orchestrator]
+  ORCH --> OUTBOUND[Outbound Delivery]
+  RAW --> PURVIEW[Purview]
+  ADF --> LOGS[Log Analytics]
+  ROUTER --> LOGS
+  ORCH --> LOGS

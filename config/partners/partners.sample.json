@@ -1,0 +1,40 @@
+[
+  {
+    "partnerCode": "PARTNERA",
+    "name": "Partner A Health",
+    "status": "active",
+    "expectedTransactions": ["270","271","999"],
+    "routingPriorityOverrides": {"270": "standard"},
+    "sftp": {
+      "homePath": "/inbound/PARTNERA/",
+      "pgpRequired": false
+    },
+    "acknowledgments": {
+      "expectsTA1": true,
+      "expects999": true
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 300,
+      "ack999Minutes": 15
+    }
+  },
+  {
+    "partnerCode": "PARTNERB",
+    "name": "Partner B Claims",
+    "status": "draft",
+    "expectedTransactions": ["276","277","835"],
+    "routingPriorityOverrides": {"276": "high"},
+    "sftp": {
+      "homePath": "/inbound/PARTNERB/",
+      "pgpRequired": true
+    },
+    "acknowledgments": {
+      "expectsTA1": true,
+      "expects999": false
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 300,
+      "ack999Minutes": 30
+    }
+  }
+]

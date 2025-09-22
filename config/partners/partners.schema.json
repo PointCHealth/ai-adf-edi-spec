@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Partner Configuration",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["partnerCode","name","status","expectedTransactions","sftp","acknowledgments","sla"],
+    "properties": {
+      "partnerCode": {"type": "string", "pattern": "^[A-Z0-9]{2,15}$"},
+      "name": {"type": "string"},
+      "status": {"type": "string", "enum": ["draft","active","inactive"]},
+      "expectedTransactions": {
+        "type": "array",
+        "items": {"type": "string", "pattern": "^\\d{3}[A-Za-z]?$"},
+        "minItems": 1
+      },
+      "routingPriorityOverrides": {
+        "type": "object",
+        "additionalProperties": {"type": "string", "enum": ["standard","high"]}
+      },
+      "sftp": {
+        "type": "object",
+        "required": ["homePath","pgpRequired"],
+        "properties": {
+          "homePath": {"type": "string"},
+          "pgpRequired": {"type": "boolean"}
+        }
+      },
+      "acknowledgments": {
+        "type": "object",
+        "required": ["expectsTA1","expects999"],
+        "properties": {
+          "expectsTA1": {"type": "boolean"},
+            "expects999": {"type": "boolean"}
+        }
+      },
+      "sla": {
+        "type": "object",
+        "required": ["ingestionLatencySecondsP95","ack999Minutes"],
+        "properties": {
+          "ingestionLatencySecondsP95": {"type": "integer", "minimum": 1},
+          "ack999Minutes": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

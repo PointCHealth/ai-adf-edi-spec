@@ -1,0 +1,6 @@
+// Routing DLQ growth detection
+AzureMetrics
+| where MetricName == 'DeadletteredMessages'
+| summarize maxTotal=max(Total) by bin(TimeGenerated,5m), Resource
+| where maxTotal > 0
+| order by TimeGenerated desc

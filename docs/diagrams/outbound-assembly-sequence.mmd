@@ -1,0 +1,15 @@
+sequenceDiagram
+  autonumber
+  participant Subsys as Subsystems (Eligibility/Claims/...)
+  participant Store as Outbound Staging
+  participant Orchestrator
+  participant Counter as Control Number Store
+  participant Delivery as Outbound Delivery
+  Subsys->>Store: Write outcome records
+  Orchestrator->>Store: Query ready outcomes
+  Orchestrator->>Counter: Acquire ISA/GS counters
+  Counter-->>Orchestrator: Counter values (ETag)
+  Orchestrator->>Orchestrator: Build segments & validate counts
+  Orchestrator->>Delivery: Persist EDI response file
+  Orchestrator->>Counter: Update counters (If-Match)
+  Orchestrator->>Delivery: (Optional) Compute checksum metadata

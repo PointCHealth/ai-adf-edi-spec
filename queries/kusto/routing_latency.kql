@@ -1,0 +1,5 @@
+// Routing latency percentiles (15m bins)
+RoutingEvent_CL
+| extend latencyMs = toint( (publishTime_t - validationCompleteTime_t) / 1ms )
+| summarize p50=percentile(latencyMs,50), p95=percentile(latencyMs,95) by bin(TimeGenerated, 15m)
+| order by TimeGenerated desc

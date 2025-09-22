@@ -1,0 +1,13 @@
+sequenceDiagram
+  autonumber
+  participant ADF as ADF Pipeline
+  participant Router as Router Function
+  participant Storage as Raw Storage
+  participant SB as Service Bus Topic
+  participant Sub as Subsystem
+  ADF->>Router: Invoke with ingestionId & rawBlobPath
+  Router->>Storage: Range Read (envelope peek)
+  Router->>Router: Parse ISA/GS enumerate ST
+  Router->>SB: Publish routing messages (per ST)
+  SB-->>Sub: Deliver filtered message
+  Sub->>Sub: Process & write outcome

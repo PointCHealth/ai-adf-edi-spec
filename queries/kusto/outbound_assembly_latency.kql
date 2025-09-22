@@ -1,0 +1,5 @@
+// Outbound assembly latency (30m bins)
+AckAssembly_CL
+| extend latencyMs = toint( (filePersistedTime_t - lastOutcomeReadyTime_t) / 1ms )
+| summarize p50=percentile(latencyMs,50), p95=percentile(latencyMs,95) by bin(TimeGenerated, 30m)
+| order by TimeGenerated desc

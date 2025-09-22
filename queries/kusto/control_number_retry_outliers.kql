@@ -1,0 +1,5 @@
+// Control number retry outliers
+AckAssembly_CL
+| where controlNumberRetries_d > 3
+| project TimeGenerated, partnerCode_s, controlNumberRetries_d, assemblyId_g
+| order by TimeGenerated desc

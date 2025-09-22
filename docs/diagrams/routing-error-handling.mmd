@@ -1,0 +1,12 @@
+flowchart TD
+  Upload[SFTP Upload] --> Event[Blob Created Event]
+  Event --> Validate[Validate & Copy]
+  Validate -->|Fail Validation| Quarantine[Quarantine + Metadata]
+  Validate -->|Success| RouteInvoke[Invoke Router]
+  RouteInvoke --> Peek[Envelope Peek]
+  Peek --> Publish[Publish Routing Messages]
+  Publish -->|All Success| Complete[Ingestion Complete]
+  Publish -->|Failures > Threshold| PublishFail[Publish Failure Alert]
+  PublishFail --> RetryRouter[Manual Router Retry]
+  RetryRouter --> Publish
+  Quarantine --> Alert[Quarantine Alert]

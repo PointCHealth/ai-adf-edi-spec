@@ -1,0 +1,14 @@
+flowchart TD
+  Start[Outcome Records Ready] --> Acquire[Acquire Counters]
+  Acquire --> Build[Build Segments]
+  Build --> Validate[Validate Structure]
+  Validate -->|Invalid| TemplateErr[Template Validation Error]
+  Validate -->|Valid| Persist[Persist File]
+  Persist --> UpdateCounters[Update Counters]
+  UpdateCounters -->|ETag OK| Publish[Publish outbound-ready msg]
+  UpdateCounters -->|ETag Conflict| CounterRetry[Retry Acquire]
+  CounterRetry --> Acquire
+  TemplateErr --> AlertTemplate[Alert: Assembly Failure]
+  Persist -->|Write Failure| StorageErr[Storage Write Error]
+  StorageErr --> AlertStorage[Alert: Storage Failure]
+  Publish --> Done[Done]

@@ -1,0 +1,12 @@
+flowchart TD
+  Start[Start Assembly] --> ReadCounter[Read Counter]
+  ReadCounter --> Calc[Proposed = current + 1]
+  Calc --> UpdateAttempt[Conditional Update]
+  UpdateAttempt -->|Success| BuildSegments[Build Segments]
+  UpdateAttempt -->|Mismatch| Retry{Retry < 5?}
+  Retry -->|Yes| ReadCounter
+  Retry -->|No| Collision[Collision Alert]
+  BuildSegments --> Validate[Validate Counts]
+  Validate -->|OK| Persist[Persist File]
+  Validate -->|Fail| AssemblyError[Assembly Error]
+  Persist --> Done[Done]
