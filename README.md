@@ -16,6 +16,7 @@ This repository contains architecture and governance specifications for a HIPAA-
 | [docs/06-operations-spec.md](docs/06-operations-spec.md) | Runbooks, monitoring, alerting, operational KPIs |
 | [docs/07-nfr-risks-spec.md](docs/07-nfr-risks-spec.md) | Non-functional requirements and risk register |
 | [docs/08-transaction-routing-outbound-spec.md](docs/08-transaction-routing-outbound-spec.md) | Routing layer & outbound acknowledgments/response flows |
+| [docs/09-tagging-governance-spec.md](docs/09-tagging-governance-spec.md) | Azure resource & data tagging standards, enforcement, taxonomy |
 
 ## Repository Structure Additions
 
