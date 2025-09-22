@@ -188,6 +188,100 @@ Example:
 
 ## 15. Appendix – Pseudo-code Outlines
 
+## 16. Transaction Routing & Acknowledgment Expectations (Detailed Matrix)
+
+Derived from Architecture Appendix A; focuses on routing properties, mandatory vs. optional acknowledgments, and special handling rules adopted in this implementation.
+
+| Inbound Transaction | Primary Domain Consumer Subscription | Routing Filters (Example) | Mandatory Technical Acks We Send | Expected Business / Domain Responses We Assemble | Optional / Conditional Acks | Special Handling Rules |
+|---------------------|---------------------------------------|---------------------------|----------------------------------|-----------------------------------------------|------------------------------|-----------------------|
+| 270 | Eligibility Service (`sub-eligibility`) | `transactionSet = '270'` | 999 (syntax if errors) | 271 | 824 (rare) | Low latency target path; escalate if p95 > 2m. |
+| 271 (if inbound) | (Analytics optional) | `transactionSet = '271'` | 999 (syntax) | None (already response) | — | Stored for trace only; may skip routing if configured. |
+| 276 | Claim Status Inquiry (`sub-claims`) | `transactionSet = '276'` | 999 | 277 | — | Prioritize parity with 270 latency. |
+| 277CA | Claims Intake Status (`sub-claims`) | `transactionSet = '277' AND isCA=true` (flag added downstream) | 999 | 277 (later lifecycle) | — | Mark claim lifecycle stage = VALIDATED. |
+| 277 (status) | Claims Status (`sub-claims`) | `transactionSet = '277' AND isCA=false` | 999 | 835 (eventual) | — | Drives SLA timer for remittance expectation. |
+| 278 Request | Prior Auth (`sub-claims` or `sub-clinical`) | `transactionSet = '278' AND direction='INBOUND'` | 999 | 278 Response | 824 (if business reject) | Priority escalation allowed via partner config. |
+| 278 Response | Prior Auth (analytics) | `transactionSet = '278' AND direction='OUTBOUND'` | 999 (if inbound) | None | — | Completion of auth lifecycle metrics. |
+| 834 | Enrollment (`sub-enrollment`) | `transactionSet = '834'` | TA1 (if structural), 999 | None (business changes internal) | 824 (application advice) | Large file concurrency tuning; INS action counts aggregated downstream. |
+| 820 | Finance (`sub-remittance`) | `transactionSet = '820'` | TA1, 999 | None | 824 | Financial variance monitoring triggers 824. |
+| 824 | (Optional analytics) | `transactionSet = '824'` | 999 | None | — | Generated internally; may skip routing. |
+| 835 | Remittance (`sub-remittance`) | `transactionSet = '835'` | TA1, 999 | None | 824 (if application reject) | Stricter ACL; checksum verification emphasis. |
+| 837 (P/I/D) | Claims Intake (`sub-claims`) | `transactionSet IN ('837P','837I','837D')` | TA1, 999 | 277CA (business ack) then 277 & 835 | 824 (business reject) | Multi-ST fan-out; control number tracking critical. |
+| 999 (inbound) | Ack Correlation (`sub-ack`) | `transactionSet = '999'` | TA1 (if envelope error) | None | — | Correlate to outbound file; update validation metrics. |
+| TA1 (inbound) | Ack Correlation (`sub-ack`) | (Envelope classification) | (N/A—we received) | None | — | Immediate structural failure escalation. |
+
+Notes:
+
+- `direction` property may be injected by ingestion (based on partner path) or by outbound orchestrator for internally generated responses.
+- `isCA` flag for 277 vs 277CA determined after downstream claim validation stage; not present at initial routing (added on re-publication or enrichment message if needed).
+- For minimization, table references conceptual attributes not all physically present in routing message (e.g., `isCA` may require enrichment topic).
+
+### 16.1 Routing Rule Authoring Pattern
+
+Rules are defined declaratively in `routing-rules.json` with structure:
+
+```json
+{
+  "rules": [
+    {"name": "eligibility-270", "filter": "transactionSet = '270'", "subscription": "sub-eligibility"},
+    {"name": "claims-837", "filter": "transactionSet LIKE '837%'", "subscription": "sub-claims"},
+    {"name": "remit-835", "filter": "transactionSet = '835'", "subscription": "sub-remittance"}
+  ]
+}
+```
+
+ADF / Function deployment step compares desired rules vs. existing Service Bus subscription SQL filters and applies additive / removal changes idempotently.
+
+### 16.2 Acknowledgment Assembly Decision Matrix
+
+| Condition | TA1 Generated? | 999 Generated? | 824 Generated? | Business Response (271/277/278/277CA/835) |
+|-----------|----------------|----------------|----------------|-------------------------------------------|
+| ISA/IEA mismatch | Yes (immediate) | No (skipped) | No | No |
+| Functional syntax errors only | No | Yes (with IK3/IK4) | No | Possibly deferred (if partial successes) |
+| Business validation failure (e.g., 834 member invalid) | No | Yes (syntax still) | Yes (TED codes) | N/A |
+| 837 accepted and claim ingest success | No | Yes (AK9=Accepted) | No | 277CA then 277 later, 835 eventual |
+| Eligibility inquiry valid | No | Yes (if partner requires) | No | 271 |
+| Prior auth request valid | No | Yes (if partner requires) | No | 278 response |
+
+### 16.3 Control Number Integrity Checks
+
+- Pre-assembly: verify no gap in internal counter sequence since last persisted outbound for that partner/transaction class.
+- Post-assembly: compare AK9 / trailer counts with computed ST/SE counts; log discrepancy metric.
+- Reissue policy: If outbound file fails after counter increment but before partner visibility, attempt single retry with identical control numbers; if already visible, next file uses next sequence (gap documented).
+
+### 16.4 SLA Reference Mapping
+
+| Acknowledgment / Response | SLA Target (Illustrative) | Trigger Start | Trigger End | Metric Source |
+|---------------------------|---------------------------|---------------|-------------|---------------|
+| TA1 | < 5 min | Ingestion event time | TA1 file persisted | InterchangeValidation log |
+| 999 | < 15 min | Ingestion event time | 999 file persisted | AckAssembly_CL |
+| 277CA | < 4 hrs | 837 routing publish | 277CA file persisted | AckAssembly_CL + claim status store |
+| 271 | < 5 min | 270 ingestion event | 271 file persisted | AckAssembly_CL |
+| 278 Response | < 15 min | 278 request ingestion | 278 response persisted | AckAssembly_CL |
+| 277 (status) | Variable (batch) | Claim adjudication milestone | 277 file persisted | AckAssembly_CL |
+| 835 | Payer SLA (e.g., weekly cycle) | Claim payment cycle start | 835 file persisted | AckAssembly_CL |
+
+### 16.5 Observability Enhancements
+
+- Custom dimension `ackType` added to AckAssembly_CL enabling pivot dashboards (999, 271, 277CA, etc.).
+- Derived metric `AckLatencySeconds` for each file; percentile targets aligned with SLA table.
+- Alert thresholds:
+  - 999LatencyP95 > 900 seconds over 30 min window -> Warning.
+  - TA1FailureRate > 0.5% daily -> Investigate envelope generation or partner formatting.
+  - ControlNumberGapDetected = true -> Critical.
+
+### 16.6 Security Reinforcement
+
+- Outbound assembly process never persists PHI in transient logs; only file path + control numbers + counts.
+- Routing enrichment forbids adding member IDs unless `featureFlag_allowMemberIdInRouting` explicitly enabled (default disabled).
+- All rule changes audited (config drift detection comparing deployed vs. git-sourced `routing-rules.json`).
+
+### 16.7 Future Enhancements
+
+- Introduce event-sourced acknowledgment pipeline (each routing message completion posts minimal event; orchestrator reacts rather than polling).
+- Add FHIR companion response emit (parallel 271/277 FHIR resources) in Phase 2 parsing.
+- Automated anomaly detection (e.g., sudden spike in 999 rejects) via Log Analytics scheduled query + ML baseline.
+
+
 ### 15.1 Router Function (HTTP Trigger from ADF)
 
 ```pseudo

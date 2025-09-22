@@ -1,0 +1,14 @@
+// Routing Dead-Letter Queue (DLQ) Triage
+// Assumptions: A separate ingestion of DLQ messages into Log Analytics table RoutingDLQ_CL with fields:
+// TimeGenerated, partnerCode, transactionSet, deadLetterReason, deadLetterErrorDescription, routingId, ingestionId
+
+RoutingDLQ_CL
+| where TimeGenerated > ago(7d)
+| summarize total=count(), partners=dcount(partnerCode), transactions=dcount(transactionSet) by deadLetterReason
+| order by total desc
+
+// Detailed recent failures (last 2h)
+RoutingDLQ_CL
+| where TimeGenerated > ago(2h)
+| project TimeGenerated, partnerCode, transactionSet, deadLetterReason, deadLetterErrorDescription, routingId
+| order by TimeGenerated desc

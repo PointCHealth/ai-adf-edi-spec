@@ -198,3 +198,203 @@ Performance Considerations:
 
 ---
 (Additional sections—security, data flow, IaC, SDLC—will be in companion documents.)
+
+## Appendix A – Healthcare EDI Transaction Catalog (Overview)
+
+This catalog summarizes commonly supported ASC X12N HIPAA healthcare transaction sets (plus key technical acknowledgments) to ground architectural routing, storage, and outbound response design. For each transaction: purpose, primary business use, salient data elements (envelope + core segments – not exhaustive), typical internal routing destinations, security/PHI considerations, and expected response/acknowledgment patterns are listed. This serves as a master reference for partner onboarding, routing rule authoring, and observability dashboards.
+
+### Legend / Conventions
+
+- Control Numbers: Interchange (ISA13), Functional Group (GS06), Transaction (ST02), Claim/Eligibility control numbers appear in specific segments (e.g., BHT, TRN, CLM, NM1).
+- Acknowledgments: TA1 (interchange), 999 (functional syntax), 277CA (claims acknowledgement variant), 271 (eligibility response), 277 (claim status), 835 (remittance), 824 (application advice – optional), 997 (legacy; superseded by 999 but may appear historically), 864 (text report – rare), 820 (payment order – sometimes paired with 835 EFT).
+- Routing: Describes the internal subsystem or domain service that consumes the routing message/event (after envelope peek) and any secondary processors (e.g., analytics, compliance audit).
+- PHI Sensitivity: High (contains member/claim data), Medium (member identifiers but limited clinical detail), Low (primarily financial/summary) – all treated as PHI under platform security; classification drives minimization in routing metadata.
+
+### A.1 Eligibility Inquiry / Response (270 / 271)
+
+| Aspect | 270 Inquiry | 271 Response |
+|--------|-------------|--------------|
+| Purpose | Request eligibility & benefit info for a subscriber/dependent | Return coverage, benefit, plan, service-level details |
+| Core Segments (beyond envelope) | BHT, HL loops (2000A/B/C/D), NM1 (submitter, receiver, subscriber, dependent), TRN (trace), DTP (service date), EQ (service type), REF (trace/mbr id) | BHT, HL loops mirrored, NM1, TRN (echo), EB (eligibility or benefit), DTP, MSG (text), AAA (rejection), REF |
+| Key Identifiers | TRN02 (trace), Subscriber/Member ID (NM109), Provider NPI (NM109 in 2100A) | Echo TRN02, Member ID, EB qualifiers |
+| Typical Routing | Eligibility service (real-time or near RT); analytics (volumes, rejection codes) | Returns assembled outbound path to partner via outbound orchestrator |
+| Expected Responses | 999 (syntax) and 271 (business) | TA1/999 from partner on our 271 (if partner returns ack); none internally |
+| PHI Sensitivity | Medium | Medium |
+| Notable Errors | AAA segments (request reject), missing coverage | AAA segments conveying denial reason |
+
+### A.2 Claim (Professional / Institutional / Dental) – 837P / 837I / 837D
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Submit healthcare claims for reimbursement (professional, institutional facility, dental). |
+| Core Segments | BHT, NM1 loops (billing provider, subscriber, patient, payer), HL hierarchical loops, CLM (claim), DTP (service dates), SV1/SV2/SV3 (service lines), REF (claim identifiers), HI (diagnosis codes), NM1 rendering/referring providers, AMT, CAS (adjustments – sometimes later). |
+| Key Identifiers | CLM01 (claim submitter’s identifier), Patient/Subscriber IDs, Payer ID, Billing provider NPI (NM109), BHT03 (reference). |
+| Typical Routing | Claims intake service -> pre-adjudication validation -> claim repository; compliance audit; analytics (lag patterns). |
+| Expected Responses | TA1 (if interchange issue), 999 (syntax), 277CA (claim acknowledgment/validation status), later 835 (remittance) and 277 (claim status) depending on lifecycle. |
+| PHI Sensitivity | High (diagnosis/procedure). |
+| Notable Errors | Validation (invalid codes), duplicate CLM01, subscriber not eligible, provider not authorized. |
+
+### A.3 Remittance Advice – 835
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Communicate adjudicated claim payment details, adjustments, and patient responsibility amounts. |
+| Core Segments | BPR (payment order), TRN (trace/EFT reference), REF (payer identifiers), CLP (claim payment info), NM1 loops (payer, payee, patient), CAS (adjustments), AMT (totals), PLB (provider-level adjustments), SVC (service line), DTM (dates). |
+| Key Identifiers | TRN02 (trace/EFT), CLP01 (claim control), Payer ID, Payee NPI/TIN. |
+| Typical Routing | Remittance processing service -> financial posting, reconciliation, analytics, provider portal export. |
+| Expected Responses | 999 (syntax) back to payer if inbound; rarely 824 if application-level issue. Outbound side: none beyond partner’s acks. |
+| PHI Sensitivity | High (claim/member). |
+| Notable Errors | Control total mismatch, missing associated claim, duplicate TRN, adjustment code mapping failures. |
+
+### A.4 Enrollment (Member Maintenance) – 834
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Add, change, terminate, or reinstate member coverage and demographic details. |
+| Core Segments | INS (member action), REF (subscriber/mbr identifiers), DTP (effective dates), NM1 loops (member, sponsor, payer), HD (coverage details), LX (transaction set line number), COB (coordination of benefits), AMT, N1 (sponsor/employer). |
+| Key Identifiers | INS03 (maintenance reason), REF*0F (subscriber ID), Member ID, Policy/Group number (REF), Coverage effective dates (DTP). |
+| Typical Routing | Enrollment service -> member master data store -> eligibility engine refresh. |
+| Expected Responses | TA1 (if structural), 999 (syntax). Some trading partners also exchange 824 for application acceptance/rejection; internally may generate 999 + optional 824. |
+| PHI Sensitivity | Medium (demographics, coverage – limited clinical). |
+| Notable Errors | Overlapping coverage date, termination without prior enrollment, invalid maintenance reason code. |
+
+### A.5 Claim Status Inquiry / Response – 276 / 277
+
+| Aspect | 276 Inquiry | 277 Response |
+|--------|------------|--------------|
+| Purpose | Request status of previously submitted claim(s). | Provide status (accepted, denied, pending, paid) and action codes. |
+| Core Segments | BHT, HL loops, TRN (trace), REF (claim identifier), DTP (service date), NM1 loops (provider, payer, subscriber), PAT | BHT, HL loops, TRN (echo), STC (status info), REF (claim or control numbers), DTP, SVC (service line status). |
+| Key Identifiers | Claim control/reference (REF), TRN02, Provider NPI, Patient ID | STC status codes, echoed claim reference, TRN02. |
+| Typical Routing | Claim inquiry processor -> claim repository index lookup. | Claim status service -> outbound assembly. |
+| Expected Responses | 999 (syntax), 277 (business). | TA1/999 (partner acks). |
+| PHI Sensitivity | Medium (claim reference, limited detail) | Medium |
+| Notable Errors | Unknown claim, invalid date range, unauthorized provider | Missing internal claim mapping, stale status. |
+
+### A.6 Health Care Services Review (Prior Authorization) – 278 (Request & Response)
+
+| Aspect | Request (278) | Response (278) |
+|--------|-------------|----------------|
+| Purpose | Request authorization for healthcare services or admissions. | Grant, pend, modify, or deny services. |
+| Core Segments | BHT, HL loops (requester, subscriber, dependent), UM (request details), HCR (certification), HSD (quantity/time), REF (patient/control), DTP (service dates), AAA (reject) | Mirror BHT/HL, UM (review outcome), HCR, REF, DTP, AAA (denial), MSG. |
+| Key Identifiers | REF (patient/control), UM01 (request category) | Echo control REF, certification number, UM outcome. |
+| Typical Routing | Prior auth service -> clinical/utilization management workflow. | Same service -> outbound response assembly. |
+| Expected Responses | 999 (syntax), 278 response (business). | TA1/999 acks from partner on outbound. |
+| PHI Sensitivity | High (clinical intent/procedures). | High (clinical outcome). |
+| Notable Errors | Missing clinical documentation, invalid service type, coverage inactive | Inconsistent certification, duplicate request. |
+
+### A.7 Payment Order / Remittance – 820 (If Used)
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Transmit premium payment or payment order and remittance information (often payer to plan/employer or employer to payer). |
+| Core Segments | BPR (payment), TRN (trace), REF (originator), DTM (dates), N1 loops, ENT (entity detail), RMR (remittance ref), SE. |
+| Key Identifiers | TRN02 (trace), RMR02 (invoice/remit ref), Payer/Payee IDs. |
+| Typical Routing | Finance/payment reconciliation module; pairing with related 834/benefit invoice. |
+| Expected Responses | 999 (syntax) optionally 824 (application) if rejection or balancing issue. |
+| PHI Sensitivity | Low (financial, not clinical). |
+| Notable Errors | Amount mismatch, unknown invoice reference, duplicate TRN. |
+
+### A.8 Application Advice – 824 (Optional)
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Provide application-level acceptance/rejection (beyond syntactic 999) for inbound 834, 820, 837, etc. |
+| Core Segments | BGN (begin), OTI (transaction info), REF (reference), TED (error details), SE. |
+| Key Identifiers | OTI02 (group control), OTI03 (transaction set), REF (reference to original), TED segments (error codes). |
+| Typical Routing | Generated by application validation module when business content fails (e.g., invalid coverage change). |
+| Expected Responses | 999 (syntax) for the 824 itself; no business response. |
+| PHI Sensitivity | Low (should avoid detailed PHI – error codes only). |
+| Notable Errors | Provided as codes in TED segments. |
+
+### A.9 Functional Acknowledgment – 999 & Legacy 997
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Report syntactic validation results at functional group & transaction level (AK1/AK2/IK3/IK4/AK9). 997 legacy analogous without detailed error codes. |
+| Core Segments | AK1, AK2, IK3/IK4 (errors), AK9 (summary). |
+| Key Identifiers | AK1/AK2 reference GS06, ST02; AK9 aggregates counts. |
+| Typical Routing | Outbound orchestrator after validation engine results aggregated. |
+| Expected Responses | Partner may send TA1 if interchange issue with our 999. No further business response. |
+| PHI Sensitivity | Low. |
+| Notable Errors | Syntax, segment sequence, missing required element. |
+
+### A.10 Interchange Acknowledgment – TA1
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | Accept/reject interchange envelope (ISA/IEA) before functional-level processing. |
+| Core Segments | TA1 segment within X12 interchange (not its own transaction set). |
+| Key Identifiers | Interchange control number (ISA13), date/time, error code. |
+| Typical Routing | Immediate generation by envelope validator if structural errors. |
+| Expected Responses | None (terminal). |
+| PHI Sensitivity | Low. |
+| Notable Errors | ISA/IEA mismatch, invalid date, repetition separator error. |
+
+### A.11 Claim Status Response (277) & Claim Acknowledgment (277CA distinction)
+
+| Aspect | Description |
+|--------|-------------|
+| Purpose | 277CA specifically acknowledges receipt/validation of 837 claim; 277 (status) communicates ongoing adjudication outcomes. |
+| Core Segments | STC (status codes), BHT, HL loops, TRN, REF (claim ctrl), SVC (service line), DTP. |
+| Key Identifiers | Claim control number (REF), STC01 composite status, TRN02. |
+| Typical Routing | Claims status engine -> outbound orchestrator; analytics for turnaround metrics. |
+| Expected Responses | 999 from partner for our 277; inbound we produce 999 + downstream claim ingest. |
+| PHI Sensitivity | Medium–High depending on included service info. |
+| Notable Errors | Status code mapping, orphaned status (no prior claim). |
+
+### A.12 Miscellaneous / Less Common (If Required Future Phases)
+
+- 864 Text Report: human-readable report; rarely used – consider converting to structured log.
+- 880 Grocery Products Invoice (not healthcare) – exclude unless multi-industry.
+- NCPDP Telecom (non-X12) – distinct standard; out-of-scope here.
+
+### A.13 Transaction to Response Matrix (Summary)
+
+| Inbound Transaction | Primary Business Response | Technical Acks Expected | Possible Additional Responses | Outbound Timing Considerations |
+|---------------------|---------------------------|-------------------------|-------------------------------|-------------------------------|
+| 270 | 271 | TA1 (if envelope), 999 | 824 (rare) | Near real-time (<2–5 min) |
+| 276 | 277 | TA1, 999 | (None) | Near real-time |
+| 278 Request | 278 Response | TA1, 999 | 824 (if business rule fail) | Near real-time or short batch |
+| 834 | 999 | TA1 | 824 (application advice) | Batch (daily or intra-day) |
+| 820 | 999 | TA1 | 824 | Batch (financial settlement windows) |
+| 837 (P/I/D) | 999, 277CA, later 277 status, 835 remittance | TA1 | 824 (optional), 277 (subsequent) | Multi-stage lifecycle (minutes to days) |
+| 835 | (None – financial) | TA1, 999 | 824 (if we issue application rejection) | Batch (payer schedules) |
+| 824 | (None) | TA1, 999 | — | As generated by application engine |
+| 999 | (None) | TA1 | — | Within SLA (<15 min) |
+| TA1 | (None) | — | — | Immediate |
+| 277CA | (Intermediate) | TA1, 999 | 277 (later), 835 (final) | Within hours |
+| 277 (status) | 835 (ultimate financial) | TA1, 999 | — | Periodic until final |
+
+### A.14 Routing Metadata Minimization
+
+Only minimal, non-PHI envelope metadata is published on the routing topic: `transactionSet`, `partnerCode`, `interchangeControl`, `functionalGroup`, `stPosition`, `routingId`, `ingestionId`, checksum, and correlation key. Member IDs, claim numbers (CLM01), diagnosis/procedure codes, monetary amounts, and benefit details are deliberately excluded at the routing layer to uphold least-privilege and minimize sensitive data propagation.
+
+### A.15 Observability Crosswalk
+
+| Transaction | Key Metrics | Error Signals | SLA Anchor |
+|------------|-------------|--------------|-----------|
+| 270/271 | Inquiry volume, response latency | AAA rejects spike | Response latency (<2–5 min) |
+| 278 | Auth request count, decision latency | AAA/denials | Decision latency (<15 min initial) |
+| 834 | Member adds/terms, reject rate | 824 negative count | Daily batch completion window |
+| 837 | Claim intake rate, 277CA issuance latency | 999 rejects, 277CA errors | 999 <15m; 277CA <4h |
+| 835 | Payment posting latency | Control total mismatch alerts | Remit availability vs payer SLA |
+| 276/277 | Inquiry -> status turnaround | STC error code anomalies | Status response <2–5 min |
+| 820 | Payment order variance | Balancing failures | Settlement window adherence |
+| 824 | Application reject trends | High error code concentration | N/A (supporting) |
+| 999 | Syntax reject ratio | AK9 reject spike | <15 min from ingest |
+| TA1 | Interchange reject ratio | Envelope errors per partner | Immediate (<5 min) |
+
+### A.16 Security & Compliance Notes
+
+- Encryption: All transactions at rest & in transit (TLS/SFTP); optional PGP Phase 2 for 834, 837, 835 based on partner requirements.
+- Access Segmentation: Claim (837) & Remittance (835) raw paths may require stricter ACLs vs. eligibility (270/271) due to richer PHI & financial data.
+- Retention: Proposed uniform baseline (e.g., 7 years) with potential shorter analytic derivative retention; catalog enables differential retention policies by transaction if required.
+- Data Masking: Downstream curated views must ensure suppression of unneeded clinical codes for non-claims personas.
+
+### A.17 Future Extensions
+
+- Add FHIR mapping reference table (837 -> Claim FHIR resources; 834 -> Coverage/Enrollment; 270/271 -> CoverageEligibilityRequest/Response) when Phase 2 semantics parsing begins.
+- Introduce automated completeness scoring for 837 (presence of HI segments, CLM line counts) feeding quality dashboards.
+- Evaluate addition of 275 (attachments) if prior authorization / claim documentation exchange becomes in-scope.
+
+---

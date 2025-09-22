@@ -313,4 +313,41 @@ If router detects structural ISA/IEA mismatch before routing messages emission:
 - PGP decryption timeline
 - Required lineage detail depth for audit signoff
 
+## 25. Transaction-Specific Flow Summary (Reference to Architecture Appendix A)
+
+Cross-references the master transaction catalog (Architecture Spec Appendix A) to highlight ingestion + routing nuances only (pre-domain semantic parsing).
+
+| Transaction | Ingestion Nuances | Routing Notes | Outbound/Ack Generation Touchpoints | Metadata Emphasis |
+|-------------|------------------|--------------|-------------------------------------|-------------------|
+| 270 (Elig Inquiry) | High-frequency small files; minimize cold start latency. | One routing message per ST (usually 1). | 271 business response assembled; 999 earlier on syntax failure. | Envelope controls only; TRN captured downstream. |
+| 276 (Claim Status Inquiry) | Similar profile to 270; small payload. | Routed to claim status lookup. | 277 response assembly. | Inquiry vs. response correlation id (TRN) downstream. |
+| 278 Request | Variable size (clinical justification). | Prior auth service; may prioritize. | 278 response assembled. | Only control numbers/priority flagged. |
+| 820 | Financial content; treat as PHI-adjacent but lower clinical sensitivity. | Finance subscription only. | 999 / optional 824. | BPR/TRN not exposed in routing. |
+| 824 | Generated internally on business reject. | Optionally routed for analytics. | None (self-contained). | Error code counts (TED) aggregated later. |
+| 834 | Potentially large batch; ensure parallel copy config. | Enrollment service; may emit multiple routing messages if multiple STs. | 999 mandatory; optional 824. | INS action summary deferred. |
+| 835 | Large multi-claim; high PHI & financial; stricter ACL. | Remittance processor. | 999 only (if inbound). | CLP/CAS not in routing. |
+| 837 (P/I/D) | Largest; consider future streaming peek optimization. | Claims intake; multiple ST -> multiple messages. | 999, 277CA, later 277 & 835. | ST count captured; claim counts downstream. |
+| 999 | Outbound primarily; inbound partner 999 archived. | Correlation subsystem only. | None further. | AK9 summary codes tracked downstream. |
+| TA1 | Immediate structural path. | Not routed. | Immediate TA1 generation. | Envelope error code persisted. |
+| 271 / 277 / 278 Response / 277CA | Inbound responses stored for lifecycle trace. | Routed only if analytics needed. | Drives subsequent lifecycle timers (e.g., 835 expectation). | Status/decision latency metrics computed later. |
+
+### 25.1 Routing Data Minimization
+
+Routing layer enforces Appendix A.14 minimization. Requests to add member IDs, claim numbers, diagnosis codes, amounts, or benefit details to routing payloads require security review and design update.
+
+### 25.2 Acknowledgment SLA Hooks
+
+- 999 batching window ties to latest `receivedUtc` per group control number.
+- 277CA latency = first 837 routing publish -> 277CA assembly persisted.
+- TA1 latency monitored separately (structural path).
+
+### 25.3 Control Number Traceability Chain
+
+`ingestionId` -> (ISA13, GS06) -> ST entries (transactionSet, ST02, routingId) -> outbound acknowledgments (TA1/999/other) metadata. Daily lineage job materializes graph in Purview.
+
+### 25.4 Future Enhancements
+
+- Streaming partial upload envelope detection for very large 837 to pre-stage routing.
+- Attachment handling (275) pre-validation hook (future scope).
+
 ---

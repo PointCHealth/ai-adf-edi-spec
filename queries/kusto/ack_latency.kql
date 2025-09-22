@@ -1,0 +1,6 @@
+// Ack Latency Distribution (last 24h)
+AckAssembly_CL
+| where TimeGenerated > ago(24h)
+| extend latencySeconds = datetime_diff('second', filePersistedTime, triggerStartTime) * -1
+| summarize p50=percentile(latencySeconds,50), p95=percentile(latencySeconds,95), p99=percentile(latencySeconds,99), count() by ackType
+| order by p95 desc

@@ -1,0 +1,60 @@
+{
+  "_comment": "Routing rules configuration for Service Bus subscription SQL filters. Managed via IaC; do not edit manually in production.",
+  "version": 1,
+  "rules": [
+    {
+      "name": "eligibility-270",
+      "description": "Route eligibility inquiries to eligibility subsystem",
+      "filter": "transactionSet = '270'",
+      "subscription": "sub-eligibility",
+      "priority": 100
+    },
+    {
+      "name": "claims-837",
+      "description": "Route professional/institutional/dental claims (any 837 variant) to claims intake",
+      "filter": "transactionSet LIKE '837%'",
+      "subscription": "sub-claims",
+      "priority": 200
+    },
+    {
+      "name": "remittance-835",
+      "description": "Route remittance advice to remittance processor",
+      "filter": "transactionSet = '835'",
+      "subscription": "sub-remittance",
+      "priority": 300
+    },
+    {
+      "name": "enrollment-834",
+      "description": "Route enrollment maintenance to enrollment service",
+      "filter": "transactionSet = '834'",
+      "subscription": "sub-enrollment",
+      "priority": 400
+    },
+    {
+      "name": "priorauth-278",
+      "description": "Route prior authorization requests",
+      "filter": "transactionSet = '278'",
+      "subscription": "sub-claims",
+      "priority": 500
+    }
+  ],
+  "schema": {
+    "rule": {
+      "name": "Unique identifier (kebab-case).",
+      "filter": "Service Bus SQL filter expression (no ORDER BY).",
+      "subscription": "Target Service Bus subscription name.",
+      "priority": "Integer for deterministic ordering/conflict resolution.",
+      "description": "Human readable purpose."
+    },
+    "constraints": [
+      "Names must be unique",
+      "Filters must avoid broad wildcard without LIKE guard (risk of flood)",
+      "Reserved subscriptions: sub-outbound-orchestrator, sub-ack"
+    ],
+    "future": [
+      "Add 'enabled' boolean",
+      "Add 'maxDeliveryAttempts' override (applied to subscription creation)",
+      "Add 'deadLetterOnFilterEvaluationException' flag if needed"
+    ]
+  }
+}

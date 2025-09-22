@@ -1,0 +1,6 @@
+// 277CA Timeliness vs. 837 Routing Publish
+AckAssembly_CL
+| where ackType == '277CA' and TimeGenerated > ago(14d)
+| extend latencyMinutes = datetime_diff('minute', filePersistedTime, related837RoutingTime) * -1
+| summarize p50=percentile(latencyMinutes,50), p95=percentile(latencyMinutes,95), count() by bin(TimeGenerated,1d)
+| order by TimeGenerated asc

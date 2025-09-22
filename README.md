@@ -25,6 +25,8 @@ This repository contains architecture and governance specifications for a HIPAA-
 | `config/partners/partners.schema.json` | JSON schema for partner configuration validation |
 | `config/partners/partners.sample.json` | Example partner definitions |
 | `queries/kusto/` | Operational Kusto query snippets (latency, DLQ, control numbers) |
+| `ACK_SLA.md` | Acknowledgment/response SLA quick reference & KQL snippets |
+| `config/routing/routing-rules.json` | Declarative Service Bus subscription routing rules |
 | `docs/diagrams/` | Mermaid source `.mmd` files |
 | `docs/diagrams/png/` | Generated PNG diagrams |
 | `scripts/generate-diagrams.ps1` | Script to render Mermaid to PNG |
@@ -37,7 +39,52 @@ Validate a partner config file locally (example PowerShell command to install an
 npx ajv validate -s ./config/partners/partners.schema.json -d ./config/partners/partners.sample.json
 ```
 
-## Kusto Query Snippets
+## Kusto Query Snippets & Observability Assets
+
+Central references:
+
+- SLA & Metrics: see [`ACK_SLA.md`](ACK_SLA.md)
+- Routing Rules: [`config/routing/routing-rules.json`](config/routing/routing-rules.json)
+- Queries directory: [`queries/kusto/`](queries/kusto/)
+
+Current sample files:
+
+- `ack_latency.kql` – Ack latency distribution (p50/p95/p99)
+- `syntax_reject_rate_999.kql` – Daily 999 syntax reject rate
+- `ta1_failure_rate.kql` – Interchange TA1 reject trend
+- `277ca_timeliness.kql` – 837 -> 277CA latency percentiles
+- `control_number_gap_detection.kql` – Prototype control number gap finder
+
+Example inline (Ack latency over last 24h):
+
+```kusto
+AckAssembly_CL
+| where TimeGenerated > ago(24h)
+| extend latencySeconds = datetime_diff('second', filePersistedTime, triggerStartTime) * -1
+| summarize p50=percentile(latencySeconds,50), p95=percentile(latencySeconds,95), p99=percentile(latencySeconds,99), count() by ackType
+| order by p95 desc
+```
+
+Example 999 reject rate:
+
+```kusto
+AckAssembly_CL
+| where TimeGenerated > ago(7d) and ackType == '999'
+| summarize total=count(), rejects=countif(ak9Status == 'R') by bin(TimeGenerated,1d)
+| extend rejectRate = rejects * 100.0 / total
+```
+
+Example TA1 failure rate:
+
+```kusto
+InterchangeValidation_CL
+| where TimeGenerated > ago(14d)
+| summarize total=count(), failures=countif(status == 'REJECT') by bin(TimeGenerated,1d)
+| extend failureRate = failures * 100.0 / total
+```
+
+Import files under `queries/kusto/` into a workbook or saved queries for dashboards referenced in `06-operations-spec.md`.
+
 ## Diagram Generation
 
 Generate PNGs (requires Node/npm):

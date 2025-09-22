@@ -1,0 +1,12 @@
+// Control Number Gap Detection (Prototype)
+// NOTE: interchangeControlNumber assumed numeric. Adjust casting if alphanumeric.
+AckAssembly_CL
+| where TimeGenerated > ago(30d)
+| project TimeGenerated, partnerCode, ackType, interchangeControlNumber
+| summarize makeset(interchangeControlNumber) by partnerCode, ackType
+| extend sorted = array_sort_asc(todynamic(set_interchangeControlNumber))
+| mv-apply cn = sorted on (order by toint(cn) asc
+    | extend prev = toint(prev(cn))
+    | where isnotempty(prev) and toint(cn) != prev + 1
+    | project gapStart = prev, gapEnd = toint(cn))
+| where isnotempty(gapStart)

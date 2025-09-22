@@ -1,0 +1,6 @@
+// 999 Syntax Reject Rate (daily bins, 7d)
+AckAssembly_CL
+| where TimeGenerated > ago(7d) and ackType == '999'
+| summarize total=count(), rejects=countif(ak9Status == 'R') by bin(TimeGenerated,1d)
+| extend rejectRate = rejects * 100.0 / total
+| order by TimeGenerated asc

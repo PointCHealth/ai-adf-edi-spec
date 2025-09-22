@@ -1,0 +1,15 @@
+// 837 Claims without timely 277CA (Backlog)
+// Horizon configurable (default 4h)
+let horizonMinutes = 240;
+let claims = RoutingEvent_CL
+  | where TimeGenerated > ago(2d) and transactionSet matches regex '^837[PID]'
+  | project ingestionId, partnerCode, claimRoutingTime=TimeGenerated;
+let acks = AckAssembly_CL
+  | where TimeGenerated > ago(2d) and ackType == '277CA'
+  | project ingestionId, ackTime=filePersistedTime;
+claims
+| join kind=leftouter acks on ingestionId
+| extend minutesWaiting = iif(isnull(ackTime), datetime_diff('minute', now(), claimRoutingTime), datetime_diff('minute', ackTime, claimRoutingTime))
+| where isnull(ackTime) and minutesWaiting > horizonMinutes
+| summarize backlog=count(), oldestMinutes=max(minutesWaiting), p95Minutes=percentile(minutesWaiting,95) by partnerCode
+| order by backlog desc

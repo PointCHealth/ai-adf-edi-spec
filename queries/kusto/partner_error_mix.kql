@@ -1,0 +1,19 @@
+// Partner Error Mix (Syntax vs Application vs Interchange)
+// Assumes 999 syntax (ak9Status), 824 application advice (TED codes), TA1 interchange rejects.
+let syntax = AckAssembly_CL
+  | where TimeGenerated > ago(30d) and ackType == '999'
+  | summarize syntaxRejects=countif(ak9Status == 'R') by partnerCode;
+let app = AckAssembly_CL
+  | where TimeGenerated > ago(30d) and ackType == '824'
+  | mv-expand err = errors
+  | summarize appRejects=count() by partnerCode;
+let interchange = InterchangeValidation_CL
+  | where TimeGenerated > ago(30d) and status == 'REJECT'
+  | summarize interchangeRejects=count() by partnerCode;
+syntax
+| join kind=fullouter app on partnerCode
+| join kind=fullouter interchange on partnerCode
+| extend syntaxRejects = coalesce(syntaxRejects,0), appRejects = coalesce(appRejects,0), interchangeRejects = coalesce(interchangeRejects,0)
+| extend totalRejects = syntaxRejects + appRejects + interchangeRejects
+| extend syntaxPct = iif(totalRejects==0,0.0, syntaxRejects*100.0/totalRejects), appPct = iif(totalRejects==0,0.0, appRejects*100.0/totalRejects), interchangePct = iif(totalRejects==0,0.0, interchangeRejects*100.0/totalRejects)
+| order by totalRejects desc

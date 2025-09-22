@@ -1,0 +1,6 @@
+// TA1 Failure Rate (daily, 14d)
+InterchangeValidation_CL
+| where TimeGenerated > ago(14d)
+| summarize total=count(), failures=countif(status == 'REJECT') by bin(TimeGenerated,1d)
+| extend failureRate = failures * 100.0 / total
+| order by TimeGenerated asc

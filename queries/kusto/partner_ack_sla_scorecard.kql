@@ -1,0 +1,24 @@
+// Partner Acknowledgment SLA Scorecard (rolling 7d)
+// Targets (seconds): 999 <= 900, 271 <= 300, TA1 <= 300, 277CA <= 14400 (4h)
+let targets = datatable(ackType:string, slaSeconds:int) [
+  '999', 900,
+  '271', 300,
+  'TA1', 300,
+  '277CA', 14400
+];
+AckAssembly_CL
+| where TimeGenerated > ago(7d) and ackType in ('999','271','277CA')
+| extend latencySeconds = datetime_diff('second', filePersistedTime, triggerStartTime) * -1
+| summarize ackCount=count(), withinSLA=countif(latencySeconds <= toint(lookup_slaSeconds)) by partnerCode, ackType
+| join kind=leftouter (
+  targets | project ackType, slaSeconds
+) on ackType
+| extend compliancePct = iif(ackCount == 0, 0.0, withinSLA * 100.0 / ackCount)
+| order by compliancePct asc
+
+// TA1 assumed in separate InterchangeValidation table
+InterchangeValidation_CL
+| where TimeGenerated > ago(7d) and status == 'ACCEPT'
+| extend latencySeconds = datetime_diff('second', ta1GeneratedTime, interchangeReceivedTime) * -1
+| summarize ackCount=count(), withinSLA=countif(latencySeconds <= 300) by partnerCode
+| extend ackType='TA1', compliancePct = withinSLA * 100.0 / ackCount

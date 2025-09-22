@@ -1,0 +1,7 @@
+// Routing Latency Trend (p95 over time by transactionSet)
+// Assumes RoutingEvent_CL has validationCompleteTime and publishTime (or latencyMs)
+RoutingEvent_CL
+| where TimeGenerated > ago(7d)
+| extend latencyMs = case(isnotempty(latencyMs), latencyMs, datetime_diff('millisecond', publishTime, validationCompleteTime))
+| summarize p95LatencyMs=percentile(latencyMs,95), count() by bin(TimeGenerated,1h), transactionSet
+| order by TimeGenerated asc
