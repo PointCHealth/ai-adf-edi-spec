@@ -1,0 +1,21 @@
+%% Mermaid: User Invite Sequence
+sequenceDiagram
+  participant Admin as Partner Admin (SPA)
+  participant SPA as Angular SPA
+  participant API as API / Users Controller
+  participant SQL as Azure SQL
+  participant B2C as Azure AD B2C
+
+  Admin->>SPA: Enter email + role
+  SPA->>API: POST /users/invite {email, role}
+  API->>SQL: Insert Invite (token hash, expires)
+  API-->>SPA: 202 Accepted (inviteId)
+  Note over API: AuditEvent UserInvited
+  Admin->>Email: (Out of scope) Invite link delivered
+  User->>B2C: Sign-up via invite link
+  B2C-->>User: Token with partnerId
+  User->>SPA: Login
+  SPA->>API: POST /users/invite/{inviteId}/accept (token)
+  API->>SQL: Finalize user record
+  API-->>SPA: 200 OK (UserSummary)
+  Note over API: AuditEvent UserActivated

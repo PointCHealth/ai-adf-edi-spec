@@ -1,0 +1,28 @@
+%% Mermaid: Partner Portal Architecture Overview
+flowchart TD
+  subgraph Client
+    A[Browser: Partner User]
+  end
+  subgraph Identity
+    B[Azure AD B2C]
+  end
+  subgraph Frontend
+    C[Angular SPA (Static Web Apps)]
+  end
+  subgraph Backend
+    D[.NET Core API]
+    E[EF Core Layer]
+  end
+  subgraph Data
+    F[(Azure SQL)]
+    G[(Key Vault)]
+  end
+  subgraph Observability
+    H[(Log Analytics)]
+  end
+
+  A -->|Login| B -->|Token| A
+  A -->|HTTPS Requests| C -->|Bearer Token + X-Correlation-ID| D
+  D --> E --> F
+  D -->|Secret fetch| G
+  D -->|Audit & Usage Logs| H

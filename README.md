@@ -18,6 +18,18 @@ This repository contains architecture and governance specifications for a HIPAA-
 | [docs/08-transaction-routing-outbound-spec.md](docs/08-transaction-routing-outbound-spec.md) | Routing layer & outbound acknowledgments/response flows |
 | [docs/09-tagging-governance-spec.md](docs/09-tagging-governance-spec.md) | Azure resource & data tagging standards, enforcement, taxonomy |
 
+### Partner Portal Specifications
+
+New Trading Partner Self-Service Portal documentation (external-facing) is maintained under `docs/partner-portal/`:
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/partner-portal/README.md](docs/partner-portal/README.md) | Index of all portal specs & diagrams |
+| [docs/partner-portal/00-overview.md](docs/partner-portal/00-overview.md) | Portal purpose, scope, assumptions |
+| [docs/partner-portal/05-api-spec-draft.md](docs/partner-portal/05-api-spec-draft.md) | REST API surface (v1) |
+| [docs/partner-portal/08-observability.md](docs/partner-portal/08-observability.md) | Portal log taxonomy & KQL |
+
+
 ## Repository Structure Additions
 
 | Path | Purpose |
@@ -127,6 +139,15 @@ Import files under `queries/kusto/` into a workbook or saved queries for dashboa
 - Implement routing Function + Service Bus topic (`edi-routing`) and Outbound Orchestrator per specs
 - Add control number counter store & monitoring queries
 - Flesh out Function implementations (Router + Outbound Orchestrator) using provided Bicep scaffolds
+
+## CI Lint Coverage
+
+GitHub Actions workflow `ci-lint.yml` enforces:
+
+- Markdown style via markdownlint (config in `.markdownlint.json`)
+- T-SQL style via sqlfluff (config in `.sqlfluff`)
+
+Extendable to include OpenAPI validation and Bicep lint in future iterations.
 
 ## License / Confidentiality
 

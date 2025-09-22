@@ -1,0 +1,45 @@
+name: Lint Docs & SQL
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.sql'
+      - '.markdownlint.json'
+      - '.sqlfluff'
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.md'
+      - '**/*.sql'
+      - '.markdownlint.json'
+      - '.sqlfluff'
+
+jobs:
+  markdown-sql-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli@0.39.0
+
+      - name: Run markdownlint
+        run: markdownlint '**/*.md' --ignore node_modules
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff==2.3.5
+
+      - name: Run sqlfluff lint
+        run: sqlfluff lint --dialect tsql '**/*.sql'

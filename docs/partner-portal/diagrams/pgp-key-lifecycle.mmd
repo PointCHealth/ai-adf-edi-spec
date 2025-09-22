@@ -1,0 +1,9 @@
+%% Mermaid: PGP Key Lifecycle
+stateDiagram-v2
+  [*] --> NoKey
+  NoKey --> Active : Upload Key (version=1)
+  Active --> Deprecated : New Key Uploaded (version+1)
+  Deprecated --> Revoked : Revocation Action
+  Active --> Revoked : Revocation (security incident)
+  Deprecated --> [*]
+  Revoked --> [*]

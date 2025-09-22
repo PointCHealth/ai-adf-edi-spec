@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Partner Portal API
+  version: 1.0.0
+  description: >-
+    Partner Self-Service Portal API for managing keys, credentials, users, alert
+    preferences, metrics, file status and audit events. All operations are
+    implicitly scoped to the authenticated partner via the partnerId claim.
+servers:
+  - url: https://api.example.com/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Health probe
+      operationId: getHealth
+      responses:
+        '200':
+          description: OK
+  /partner/users:
+    get:
+      summary: List partner users
+      operationId: listUsers
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSummary'
+        '403': { description: Forbidden }
+  /partner/users/invite:
+    post:
+      summary: Invite a new partner user
+      operationId: inviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ email, role ]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [Standard, Admin] }
+      responses:
+        '202':
+          description: Invitation accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inviteId: { type: string, format: uuid }
+        '400': { description: Validation error }
+        '403': { description: Forbidden }
+  /partner/users/invite/{inviteId}/accept:
+    post:
+      summary: Accept an invitation (callback)
+      operationId: acceptInvite
+      parameters:
+        - in: path
+          name: inviteId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: User activated }
+        '404': { description: Not found }
+  /partner/users/{userId}:
+    patch:
+      summary: Update user (role/status)
+      operationId: patchUser
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { type: string, enum: [Standard, Admin] }
+                status: { type: string, enum: [active, disabled] }
+      responses:
+        '200': { description: Updated }
+        '404': { description: Not found }
+  /partner/users/me:
+    get:
+      summary: Get current user profile
+      operationId: getMe
+      responses:
+        '200':
+          description: Self profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+  /partner/pgp-keys:
+    get:
+      summary: List PGP keys
+      operationId: listPgpKeys
+      responses:
+        '200':
+          description: Keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PgpKey' }
+    post:
+      summary: Upload PGP public key
+      operationId: uploadPgpKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ publicKeyArmored ]
+              properties:
+                publicKeyArmored: { type: string }
+      responses:
+        '201': { description: Key created }
+        '400': { description: Validation error }
+        '409': { description: Conflict }
+  /partner/pgp-keys/{keyId}/deprecate:
+    post:
+      summary: Deprecate key
+      operationId: deprecateKey
+      parameters:
+        - in: path
+          name: keyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Deprecated }
+        '404': { description: Not found }
+  /partner/pgp-keys/{keyId}/revoke:
+    post:
+      summary: Revoke key
+      operationId: revokeKey
+      parameters:
+        - in: path
+          name: keyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Revoked }
+        '404': { description: Not found }
+  /partner/sftp/credentials:
+    get:
+      summary: List SFTP credentials
+      operationId: listSftpCredentials
+      responses:
+        '200': { description: Credential list }
+  /partner/sftp/credentials/rotation-request:
+    post:
+      summary: Request credential rotation
+      operationId: requestRotation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 500 }
+      responses:
+        '202': { description: Rotation requested }
+  /partner/alerts/preferences:
+    get:
+      summary: Get alert preferences
+      operationId: listAlertPrefs
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AlertPreference' }
+    put:
+      summary: Replace alert preferences
+      operationId: replaceAlertPrefs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [ category, enabled ]
+                properties:
+                  category: { type: string, enum: [ latency, rejects, anomalies, backlog, keyExpiry ] }
+                  enabled: { type: boolean }
+      responses:
+        '200': { description: Preferences updated }
+  /partner/metrics/summary:
+    get:
+      summary: Metrics summary
+      operationId: getMetricsSummary
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Metrics summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MetricsSummary' }
+  /partner/metrics/control-numbers/gaps:
+    get:
+      summary: Control number gaps summary
+      operationId: getControlNumberGaps
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        '200': { description: Gap summary }
+  /partner/files:
+    get:
+      summary: File status list
+      operationId: listFiles
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        '200':
+          description: File page
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/FileStatus' }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+  /partner/files/{fileId}:
+    get:
+      summary: Get single file status
+      operationId: getFileStatus
+      parameters:
+        - in: path
+          name: fileId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: File status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileStatus' }
+        '404': { description: Not found }
+  /partner/audit:
+    get:
+      summary: List audit events
+      operationId: listAuditEvents
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: actionType
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        '200': { description: Audit events page }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string }
+        status: { type: string }
+        mfaEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    PgpKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fingerprint: { type: string }
+        uploadedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        status: { type: string }
+        version: { type: integer }
+    AlertPreference:
+      type: object
+      properties:
+        category: { type: string }
+        enabled: { type: boolean }
+    FileStatus:
+      type: object
+      properties:
+        fileName: { type: string }
+        receivedAt: { type: string, format: date-time }
+        validationStatus: { type: string }
+        routingStatus: { type: string }
+        ack:
+          type: object
+          properties:
+            ta1: { type: string, nullable: true }
+            ack999: { type: string, nullable: true }
+            ack277ca: { type: string, nullable: true }
+        interchangeControlNumber: { type: integer }
+        transactionSetCount: { type: integer }
+        latency:
+          type: object
+          properties:
+            ack999Seconds: { type: integer }
+    MetricsSummary:
+      type: object
+      properties:
+        window:
+          type: object
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+        ingestionCounts:
+          type: object
+          properties:
+            total: { type: integer }
+            accepted: { type: integer }
+            rejected: { type: integer }
+        latency:
+          type: object
+          properties:
+            ack999:
+              type: object
+              properties:
+                p50: { type: integer }
+                p95: { type: integer }
+                p99: { type: integer }
+        rejectMix:
+          type: array
+          items:
+            type: object
+            properties:
+              category: { type: string }
+              count: { type: integer }
