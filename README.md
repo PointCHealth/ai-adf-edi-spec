@@ -8,14 +8,14 @@ This repository contains architecture and governance specifications for a HIPAA-
 
 | Doc | Purpose |
 |-----|---------|
-| `docs/01-architecture-spec.md` | High-level architecture, components, principles |
-| `docs/02-data-flow-spec.md` | Detailed ingestion/data flow, validation, metadata model |
-| `docs/03-security-compliance-spec.md` | Security, IAM, HIPAA controls, auditing |
-| `docs/04-iac-strategy-spec.md` | Infrastructure as Code design, modules, deployment workflow |
-| `docs/05-sdlc-devops-spec.md` | Branching, CI/CD, quality gates, release management |
-| `docs/06-operations-spec.md` | Runbooks, monitoring, alerting, operational KPIs |
-| `docs/07-nfr-risks-spec.md` | Non-functional requirements and risk register |
-| `docs/08-transaction-routing-outbound-spec.md` | Routing layer & outbound acknowledgments/response flows |
+| [docs/01-architecture-spec.md](docs/01-architecture-spec.md) | High-level architecture, components, principles |
+| [docs/02-data-flow-spec.md](docs/02-data-flow-spec.md) | Detailed ingestion/data flow, validation, metadata model |
+| [docs/03-security-compliance-spec.md](docs/03-security-compliance-spec.md) | Security, IAM, HIPAA controls, auditing |
+| [docs/04-iac-strategy-spec.md](docs/04-iac-strategy-spec.md) | Infrastructure as Code design, modules, deployment workflow |
+| [docs/05-sdlc-devops-spec.md](docs/05-sdlc-devops-spec.md) | Branching, CI/CD, quality gates, release management |
+| [docs/06-operations-spec.md](docs/06-operations-spec.md) | Runbooks, monitoring, alerting, operational KPIs |
+| [docs/07-nfr-risks-spec.md](docs/07-nfr-risks-spec.md) | Non-functional requirements and risk register |
+| [docs/08-transaction-routing-outbound-spec.md](docs/08-transaction-routing-outbound-spec.md) | Routing layer & outbound acknowledgments/response flows |
 
 ## Repository Structure Additions
 
