@@ -21,7 +21,8 @@ Cost model provides Low (optimized), Expected (baseline), and High (peak / conti
 * Environments: Dev, Test, Prod (3); optional Sandbox (excluded from baseline unless noted). Multipliers: Dev ~25% of Prod consumption; Test ~40% (load/replay).
 * Storage retention: 7 years raw immutable (tiering policy after 90 days Hot → Cool; after 1 year Cool → Archive for low-access claim/enrollment payloads where policy permits). Only Year 1 accumulation cost budgeted; future years amortized via lifecycle tiering.
 * PaaS & Serverless preference. No dedicated VM costs assumed.
-* Identity / Networking baseline (Entra ID, DNS, Private Endpoints) assumed shared corporate overhead—NOT directly attributed here except for Private Endpoint transaction counts (negligible cost compared to core drivers).
+* Private connectivity baseline: all data plane services (Storage, Service Bus, Key Vault, Log Analytics) use Private Endpoints and Data Factory runs with Managed VNet integration; incremental Private Link meters are minimal and included in networking overhead. Functions require Premium plan for VNet integration (included in baseline). API Management Standard v2 tier provides VNet integration and included API request quota.
+* Identity / Networking baseline (Entra ID, DNS, Private Endpoints) assumed shared corporate overhead—NOT directly attributed here except for Private Endpoint transaction counts and API Management metering.
 * Purview governed assets limited to raw + outbound containers initially.
 * Monitoring: Central Log Analytics workspace shared per environment; ingestion constrained by sampling & custom table design.
 * All resources tagged: `env`, `costCenter`, `owner`, `dataSensitivity`, `workload=edi`.
@@ -56,6 +57,7 @@ Cost model provides Low (optimized), Expected (baseline), and High (peak / conti
 ### 4.3 Messaging & Eventing
 | Resource | Purpose | SKU | Sizing Notes | Monthly Message Estimate |
 |----------|---------|-----|-------------|--------------------------|
+| API Management | Partner API facade + policy enforcement | Standard v2 | Supports VNet integration + 50M req/mo included | Expected ~5k inbound API calls/month (10% of file volume via API vs. SFTP) |
 | Event Grid | Blob Created triggers | Consumption | 5k events/week | ~21.7k |
 | Service Bus Namespace | Routing & outbound topics | Standard (partitioned) | 1 topic (`edi-routing`) + 1 optional (`edi-outbound-ready`), 4–6 subscriptions | See below |
 | Service Bus Messages | Routing fan-out | Standard unit (brokered message ops) | Per file: avg 3 ST sets? (range 1–10). Assume 3.5 × 21.7k ≈ 76k publish + equal deliveries (× #subscriptions filtering) | ~300k–400k ops including management |
@@ -75,7 +77,6 @@ Cost model provides Low (optimized), Expected (baseline), and High (peak / conti
 |----------|---------|-----------|
 | Azure Synapse / Fabric | Phase 2 semantic transformations | Not required Phase 1 ingestion routing only |
 | Azure Container Apps (Parsing) | Advanced validation / decompression at scale | Only if Function cold starts / memory become bottleneck |
-| Azure API Management | Partner API channel (non-SFTP) | Phase 2 expansion |
 | Azure Data Explorer / Dedicated Kusto | High-frequency analytics dashboards | Existing Log Analytics sufficient initially |
 
 ## 5. Cost Envelope (Live Unit Pricing Basis)
@@ -84,58 +85,71 @@ Figures reflect published PAYG unit prices (captured on 2025-09-29) for an assum
 ### 5.0 Current Unit Pricing (Key Extracts)
 | Service / Meter | Unit Price (USD) | Source Notes |
 |-----------------|------------------|--------------|
-| Blob Storage Hot (LRS) | $0.018 per GB-month | From pricing table (rounded) |
-| Blob Storage Cool (LRS) | $0.010 per GB-month | |
-| Blob Storage Cold (LRS) | $0.0036 per GB-month | |
-| Blob Storage Archive (LRS) | $0.002 per GB-month | Planning (rarely Year 1) |
-| Data Factory Orchestration | $1 per 1,000 activity runs | $0.001 per activity run |
-| Data Factory Data Movement | $0.25 / DIU-hour | Pro‑rated per minute |
-| Functions Consumption Exec | 1M free + $0.20 per additional 1M | Expect below free grant |
-| Functions Consumption GB-s | 400k GB-s free + $0.000016/GB-s | Low memory fast execs |
-| Event Grid Basic Ops | First 100k free + $0.60 per 1M ops | < free tier initially |
-| Service Bus Standard Base | $0.0135 per hour (~$9.86/mo) | Includes 13M ops/mo |
-| Service Bus Std Ops (excess) | $0.80 per 1M (13–100M) | Not reached in baseline |
-| Key Vault Secret Ops | $0.03 per 10K operations | Very low volume |
-| Log Analytics (Analytics Logs) | $2.30 per GB ingested | 31 days retention included |
-| Retention (beyond included) | $0.10 per GB-month | Not used (baseline 31 days) |
-| Purview (Data Gov – 1 CU placeholder) | ~ $190 per month | Legacy Data Map CU analog (estimate) |
+| Blob Storage Hot (LRS) | $0.018 per GB-month | [Azure Blob Storage pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/) (retrieved 2025-09-29) |
+| Blob Storage Cool (LRS) | $0.010 per GB-month | [Azure Blob Storage pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/) (retrieved 2025-09-29) |
+| Blob Storage Cold (LRS) | $0.0036 per GB-month | [Azure Blob Storage pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/) (retrieved 2025-09-29) |
+| Blob Storage Archive (LRS) | $0.002 per GB-month | [Azure Blob Storage pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/) (retrieved 2025-09-29) |
+| Data Factory Orchestration | $1 per 1,000 activity runs | [Azure Data Factory pricing](https://azure.microsoft.com/en-us/pricing/details/data-factory/) (retrieved 2025-09-29) |
+| Data Factory Data Movement | $0.25 / DIU-hour | [Azure Data Factory pricing](https://azure.microsoft.com/en-us/pricing/details/data-factory/) (retrieved 2025-09-29) |
+| Functions Premium (EP1 baseline) | $126.29 per vCPU-month + $8.979 per GB-month (3.5 GB) | [Azure Functions pricing](https://azure.microsoft.com/en-us/pricing/details/functions/) (retrieved 2025-09-29); ≈$158/mo per always-on instance required for VNet integration |
+| Functions Consumption Exec (burst) | 1M free + $0.20 per additional 1M | [Azure Functions pricing](https://azure.microsoft.com/en-us/pricing/details/functions/) (retrieved 2025-09-29) |
+| Functions Consumption GB-s (burst) | 400k GB-s free + $0.000016/GB-s | [Azure Functions pricing](https://azure.microsoft.com/en-us/pricing/details/functions/) (retrieved 2025-09-29) |
+| Event Grid Basic Ops | First 100k free + $0.60 per 1M ops | [Azure Event Grid pricing](https://azure.microsoft.com/en-us/pricing/details/event-grid/) (retrieved 2025-09-29) |
+| Service Bus Standard Base | $0.0135 per hour (~$9.86/mo) | [Azure Service Bus pricing](https://azure.microsoft.com/en-us/pricing/details/service-bus/) (retrieved 2025-09-29) |
+| Service Bus Std Ops (excess) | $0.80 per 1M (13–100M) | [Azure Service Bus pricing](https://azure.microsoft.com/en-us/pricing/details/service-bus/) (retrieved 2025-09-29) |
+| Key Vault Secret Ops | $0.03 per 10K operations | [Azure Key Vault pricing](https://azure.microsoft.com/en-us/pricing/details/key-vault/) (retrieved 2025-09-29) |
+| Log Analytics (Analytics Logs) | $2.30 per GB ingested | [Azure Monitor pricing](https://azure.microsoft.com/en-us/pricing/details/monitor/) (retrieved 2025-09-29) |
+| Retention (beyond included) | $0.10 per GB-month | [Azure Monitor pricing](https://azure.microsoft.com/en-us/pricing/details/monitor/) (retrieved 2025-09-29) |
+| Purview (Data Gov – 1 CU placeholder) | ~ $190 per month | Public Purview page no longer lists Data Map CU rate; placeholder retained pending confirmation |
+| Private Endpoints (Azure Private Link) | $0.01 per hour | [Azure Private Link pricing](https://azure.microsoft.com/en-us/pricing/details/private-link/) (retrieved 2025-09-29); assume minimal data processing charges |
+| API Management (Standard v2) | $700 per month base | [Azure API Management pricing](https://azure.microsoft.com/en-us/pricing/details/api-management/) (retrieved 2025-09-29); includes 50M API requests/mo, VNet integration |
+| API Management (Consumption) | $0.042 per 10K operations | [Azure API Management pricing](https://azure.microsoft.com/en-us/pricing/details/api-management/) (retrieved 2025-09-29); 1M operations free per subscription |
+
+All unit prices above were revalidated against the cited Microsoft PAYG pricing pages on 2025-09-29.
 
 ### 5.1 Updated Monthly Cost Table (Prod)
 Low = optimized & deferred features, Expected = baseline volumes described, High = stress / early Phase 2 ramp.
+
+Monthly totals were recomputed on 2025-09-29 using the unit rates in Section 5.0; figures now include the baseline Functions Premium plan and Private Endpoint meters required for VNet integration.
 
 | Category | Low | Expected | High | Basis / Formula |
 |----------|-----|----------|------|-----------------|
 | Storage (Landing + Raw + Outbound) | $18 | $25 | $45 | Hot 250 GB *0.018 + Cool 500 GB *0.01 + misc; High adds slower tiering + 50% growth |
 | Data Factory | $150 | $215 | $400 | Orchestration: 30K runs *0.001 ≈ $30; Data movement: Low 15K copies *$0.006 ≈ $90; Expected 22K copies (2 DIU *1 min) ≈ $183; High adds heavier DIU/time & reprocess |
-| Functions (All) | $0 | $3 | $15 | Under free grant (router + orchestrator); High assumes >1M execs & GB-s overage |
+| Functions (Premium plan baseline) | $158 | $170 | $320 | 1 EP1 instance always on for VNet integration; High assumes 2 pre-warmed instances for peak fan-out |
 | Event Grid | $0 | $0 | $1 | ~22K ops < 100K free; High scenario ~2M ops (1.9M billable ≈ $1.14) |
 | Service Bus (Std) | $10 | $10 | $40 | Base ~$9.86; High adds excess ops (e.g., 20M → ~7M billable ≈ $5.6) + headroom |
 | Key Vault | $0.50 | $1 | $3 | (Ops/10K)*$0.03 rounded + occasional cert ops |
 | Purview Data Governance | $0 | $190 | $380 | Low = deferred adoption; Expected 1 CU; High 2 CUs / increased scans |
 | Log Analytics (+App Insights) | $69 | $85 | $138 | Ingestion GB * $2.30 (30 / 37 / 60 GB) |
 | Monitoring & Alerts | $3 | $5 | $10 | Alert rule queries & notifications |
-| Total (Prod Monthly) | ~$251 | ~$534 | ~$1,032 | Summation (rounded) |
+| Networking (Private Endpoints & Private Link) | $30 | $37 | $60 | 4–6 endpoints * $0.01/hr plus Private Link data buffer |
+| API Management | $0 | $700 | $750 | Low = deferred (Phase 2); Expected = Standard v2 baseline; High = Standard v2 + overage calls |
+| Total (Prod Monthly) | ~$439 | ~$1,438 | ~$2,147 | Summation (rounded) |
 
 ### 5.2 Environment Roll-Up (Monthly)
 Simple proportional scaling (optimize further by sharing Purview & SB where policy permits). Service Bus base is proportionally allocated for simplicity.
 
 | Environment | Low | Expected | High | Notes |
 |-------------|-----|----------|------|-------|
-| Dev (~25%) | $63 | $135 | $260 | Lower activity, minimal Purview scans |
-| Test (~40%) | $100 | $214 | $410 | Includes load / replay tests |
-| Prod | $251 | $534 | $1,032 | From 5.1 |
-| Total / Month | ~$414 | ~$883 | ~$1,702 | |
+| Dev (~25%) | $172 | $424 | $611 | Includes shared Premium Functions + Private Endpoints + APIM shared allocation |
+| Test (~40%) | $209 | $603 | $877 | Load/replay tests with shared Premium Functions + Private Endpoints + APIM shared allocation |
+| Prod | $439 | $1,438 | $2,147 | From 5.1 |
+| Total / Month | ~$820 | ~$2,465 | ~$3,635 | |
 
-Annual (Expected) ≈ $10.6K. Add 20% contingency (pricing drift, scope creep) → **Budget Ask: $12.7K Year 1**.
+Annual (Expected) ≈ $29.6K. Add 20% contingency (pricing drift, scope creep) → **Budget Ask: $35.5K Year 1**.
 
 ### 5.3 Observed Efficiency Factors
-Lower steady-state run rate is driven by: (a) activity-run centric ADF usage vs. heavy data flows, (b) Service Bus operations well below included 13M, (c) Functions under free grants, (d) optimized log volume < 1.5 GB/day.
+Lower steady-state run rate is driven by: (a) activity-run centric ADF usage vs. heavy data flows, (b) Service Bus operations well below included 13M, (c) Functions consolidated on a single EP1 Premium plan with limited scale-out, (d) optimized log volume < 1.5 GB/day.
 
 ### 5.4 Sensitivity Levers
 | Driver | Elasticity | Comment |
 |--------|-----------|---------|
 | ST transactions per file (× factor) | High (ADF + SB + Functions) | Each extra ST adds routing message + potential downstream log events |
 | Log verbosity (% increase) | Linear in $ | Keep below 2 GB/day to maintain < $140/mo |
+| Functions Premium instance count | Step | Each additional EP1 instance adds ≈$158/mo; review before enabling pre-warmed scaling |
+| Private Endpoint footprint | Linear | Each additional endpoint ≈$7.30/mo + data processing; retire unused links |
+| API Management call volume | Step | Standard v2 includes 50M requests/mo; excess charged at $2.50 per 1M |
 | Purview adoption breadth | Step | Enabling auto-scans across many sources can double cost (add 1 CU) |
 | Reprocessing rate (%) | Moderate | 5%→10% increases ADF & Functions proportionally |
 | Lifecycle policy delay (days) | Low→Moderate | Extends Hot storage segment; small absolute $ due to modest GB |
@@ -159,7 +173,7 @@ StorageHot = HotGB * 0.018 ; StorageCool = CoolGB * 0.01 ; StorageCold = ColdGB 
 5. Reevaluate reserved capacity if any single category > 25% of total recurring run rate.
 
 ### 5.7 Caveats
-* Purview pricing currently evolving; placeholder uses legacy Data Map CU analog—confirm licensing/consumption alignment before committing.
+* Purview pricing currently evolving; Microsoft’s public page no longer surfaces Data Map CU rates—engage account team to confirm licensing/consumption alignment before committing to the placeholder value.
 * Region differentials & currency conversion not applied.
 * Does not include network egress (expected negligible—SFTP partner downloads minimal size). Add if >5% of storage throughput.
 * Archive retrieval & rehydration costs excluded (Phase 2 retention operations).
@@ -174,7 +188,8 @@ StorageHot = HotGB * 0.018 ; StorageCool = CoolGB * 0.01 ; StorageCold = ColdGB 
 | Routing messages > 1M / month | Sustained 2 months | Evaluate Premium Service Bus (throughput, predictable latency) | +$300–$500/mo |
 | Log ingestion > 2 GB/day | Trend 30-day ↑ | Increase sampling / reduce verbosity, archive raw diag to storage | Savings 10–30% logs |
 | ADF activity concurrency waits > 5% | Weekly average | Split pipelines or add parallelization / Data Flows review | Maintain SLA |
-| Function cold start p95 > 2s | >5% of invocations | Enable pre-warming / move critical path to Elastic Premium | +$100–$200/mo |
+| Function cold start p95 > 2s | >5% of invocations | Enable pre-warming / add second EP1 instance | +$158/mo per instance |
+| API Management requests > 40M/mo | Approaching 50M included quota | Review throttling policies or add scale-out unit | +$500/mo per additional unit |
 | Raw storage > 2 TB Year 1 | Growth curve | Accelerate lifecycle to Cool sooner (30 days) | Save 20–30% storage |
 | Purview assets > 5k | Catalog expansion | Add 1 more Capacity Unit or evaluate scanning schedule optimization | +$190/mo |
 
@@ -209,12 +224,13 @@ StorageHot = HotGB * 0.018 ; StorageCool = CoolGB * 0.01 ; StorageCold = ColdGB 
 | Control number counter contention | Retries inflate storage/Key Vault ops | Low | Use Table Storage optimistic concurrency; monitor retry metric |
 | Early expansion to additional X12 sets (278, 820) | Increased orchestration & ack volume | Medium | Reassess cost envelope after scope change; apply reserved tiers as needed |
 | Catalog growth via semantic parsing Phase 2 | Purview capacity cost doubling | Medium | Stage rollout; evaluate if single CU performance still adequate |
+| API Management traffic exceeds 50M calls/mo | Overage charges or need to scale-out units | Low–Med | Monitor API call patterns; enforce partner throttling policies |
 | Compliance mandates immutability for all tiers | Higher storage (no delete/tiering) | Low–Med | Engage compliance early; propose differential retention policy |
 
 ## 10. Future Phase Cost Impacts (Not in Year 1 Baseline)
 | Feature | Added Resources / Costs | Order of Magnitude |
 |---------|------------------------|-------------------|
-| Real-time API ingestion (AS2/API Mgmt) | API Management, Front Door, Additional Functions | +$500–$1k/mo |
+| Front Door + advanced API gateway features | Azure Front Door Premium, WAF policies | +$300–$600/mo |
 | Semantic EDI to FHIR transformation | Container Apps / Synapse Spark, Increased Storage & Logs | +$700–$1.5k/mo |
 | Advanced ML anomaly detection | Azure Machine Learning / Cognitive Services | +$300–$800/mo |
 | Event-sourced acknowledgments (higher event volume) | Service Bus / Event Grid ops ↑ | +$50–$150/mo |
@@ -226,8 +242,9 @@ StorageHot = HotGB * 0.018 ; StorageCool = CoolGB * 0.01 ; StorageCold = ColdGB 
 3. After stabilization (≈30 days), evaluate Reserved Capacity / Commitment Tiers (Log Analytics, Potential ADF Data Flows if introduced) or Savings Plans (Functions Premium if adopted).
 4. Quarterly refresh: update unit prices, reassess scaling triggers, verify Purview CU usage, and document any architectural changes affecting cost drivers.
 5. Maintain FinOps review cadence (monthly light, quarterly deep dive) and add anomaly alerts for sudden >25% MoM shifts uncorrelated to volume metrics.
+6. Coordinate with Microsoft pricing/account teams to validate Purview Data Map or replacement SKU rates; update Section 5 once definitive pricing is available.
 
 ---
-Prepared: <DATE_PLACEHOLDER – replace with YYYY-MM-DD>
+Prepared: 2025-09-29
 
 Owner: Data Platform Architecture
