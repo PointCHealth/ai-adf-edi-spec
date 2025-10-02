@@ -4,6 +4,14 @@
 ## Prompt
 You are defining a multi-layer testing strategy for the EDI platform covering code, infrastructure, integration, data quality, performance, and operational readiness.
 
+### Context Inputs
+- Architecture overview: `docs/01-architecture-spec.md`
+- Routing architecture: `docs/08-transaction-routing-outbound-spec.md`
+- Control number store: `docs/08-transaction-routing-outbound-spec.md` §14
+- Partner Portal API spec: `api/partner-portal/openapi.v1.yaml`
+- Observability queries: `queries/kusto/`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+
 ### Objectives
 1. Enumerate test layers: unit, component, contract (API & messaging), integration, performance, chaos/resilience, security, data quality (control numbers, SLAs), observability validation
 2. Define test ownership & gating (which layers block promotion)
@@ -11,7 +19,8 @@ You are defining a multi-layer testing strategy for the EDI platform covering co
 4. Specify contract testing approach for Service Bus topics/queues & REST endpoints (from `api/partner-portal/openapi.v1.yaml`)
 5. Outline test data management (synthetic vs masked, generation scripts, retention)
 6. Provide performance test scenarios & SLA thresholds referencing queries under `queries/kusto`
-7. Describe resilience & chaos experiments (latency injection, queue backpressure, downstream failures)
+7. Describe resilience & chaos experiments (latency injection, queue backpressure, downstream failures, control number collision handling per `docs/08-transaction-routing-outbound-spec.md` §14.3)
+8. Include contract tests for routing message schema evolution and Service Bus subscription filters
 8. Define quality gates & coverage thresholds (minimum unit/component coverage, contract test pass rate)
 9. Provide observability validation tests (ensure metrics, logs, traces emitted with required dimensions)
 10. Include automated test prompt templates for each layer

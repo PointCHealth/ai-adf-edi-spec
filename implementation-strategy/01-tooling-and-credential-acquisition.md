@@ -12,6 +12,7 @@ You are an experienced Azure integration platform engineer assisting with an EDI
 - Architecture overview: `docs/01-architecture-spec.md`
 - Operations spec: `docs/06-operations-spec.md`
 - Non-functional & risk spec: `docs/07-nfr-risks-spec.md`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
 
 ### Objectives
 1. Enumerate required local tooling (CLI, languages, formatters, scanners, diagram generators) with minimum supported versions

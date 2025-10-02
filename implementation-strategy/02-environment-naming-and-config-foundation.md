@@ -4,6 +4,11 @@
 ## Prompt
 You are designing a deterministic, scalable environment naming and configuration foundation for the EDI routing platform. Build on outputs from `01-tooling-and-credential-acquisition.md`.
 
+### Context Inputs
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+- Architecture overview: `docs/01-architecture-spec.md`
+- Security & compliance reference: `docs/03-security-compliance-spec.md`
+
 ### Objectives
 1. Define global naming contract components & allowed character sets
 2. Produce canonical naming patterns for: Management Groups, Subscriptions, Resource Groups, Key Vaults, Storage, Service Bus, Function Apps, App Config, Log Analytics, Application Insights, Container Registries

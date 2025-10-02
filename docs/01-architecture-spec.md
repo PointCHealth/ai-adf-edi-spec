@@ -1,5 +1,7 @@
 # Healthcare EDI Ingestion & Data Lake Platform – Architecture Specification
 
+> **Note:** For GitHub Actions CI/CD implementation details, see [04a-github-actions-implementation.md](./04a-github-actions-implementation.md)
+
 ## 1. Overview / Executive Summary
 This document defines the target architecture for ingesting healthcare EDI (e.g., X12 270/271, 276/277, 278, 834, 835, 837, custom CSV/JSON companion outputs) files delivered by external trading partners via SFTP, landing them securely in Azure, and persisting canonical copies plus enriched metadata into an Azure Data Lake for downstream analytics, compliance retention, and operational reporting. The solution emphasizes HIPAA compliance, least‑privilege security, automation, observability, repeatability (Infrastructure as Code), and a governed SDLC.
 
@@ -19,7 +21,7 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Event‑driven orchestration using Azure Data Factory (ADF) pipelines & triggers (option: Event Grid + Azure Functions for advanced parsing)
 - Centralized secret & key management (Azure Key Vault)
 - Observability: Logging, metrics, lineage, and alerting (Log Analytics, Azure Monitor, Azure Purview / Microsoft Purview)
-- Infrastructure as Code (Bicep/Terraform) and DevOps pipelines for promotion across dev/test/prod
+- Infrastructure as Code (Bicep) and CI/CD pipelines for promotion across dev/test/prod
 
 ## 4. Out-of-Scope (Phase 1)
 - Full semantic parsing / transformation of EDI into relational models (will be staged for downstream pipelines)
@@ -56,17 +58,23 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Microsoft Purview – Data catalog, lineage capture (ADF integration)
 - Log Analytics Workspace – Central logging, query, alert rules
 - Azure Monitor / Action Groups – Alerts (failed pipeline, latency thresholds)
-- Azure DevOps / GitHub – Repos, Pipelines (CI for IaC + ADF JSON, CD for releases)
+- GitHub – Repository, Actions workflows (CI for IaC + ADF JSON, CD for releases)
 - Azure Active Directory (Entra ID) – Managed Identities for ADF, Functions, Purview scanners
-- Azure Service Bus (Topics) – Durable routing fan‑out for downstream subsystem processing (see Routing Layer)
+- Azure Service Bus (Topics) – Durable routing fan‑out for downstream destination systems
+- **Downstream Destination Systems** (out of scope for core platform) – Independent applications that subscribe to routing messages (e.g., Eligibility Service, Claims Processing, Enrollment Management with event sourcing, Remittance Processing)
 
 ### Routing & Outbound (Preview Overview)
 
-The core ingestion architecture is extended by a Routing Layer that decouples raw file validation/persistence from downstream transactional processing and outbound acknowledgment generation. After a file is validated and the immutable raw copy is persisted, a lightweight routing function (or ADF activity invoking a Function) parses only the envelope headers needed to emit one routing message per ST transaction. These messages are published to a Service Bus Topic (e.g., `edi-routing`) with filterable application properties (`transactionSet`, `partnerCode`, `priority`). Internal subsystem consumers (eligibility, claims, enrollment, remittance) attach subscriptions with SQL filters. This pattern:
+The core ingestion architecture is extended by a Routing Layer that decouples raw file validation/persistence from downstream transactional processing and outbound acknowledgment generation. After a file is validated and the immutable raw copy is persisted, a lightweight routing function (or ADF activity invoking a Function) parses only the envelope headers needed to emit one routing message per ST transaction. These messages are published to a Service Bus Topic (e.g., `edi-routing`) with filterable application properties (`transactionSet`, `partnerCode`, `priority`).
+
+**Downstream destination systems** (eligibility, claims, enrollment management, remittance) are independent applications that attach their own Service Bus subscriptions with SQL filters to receive relevant transactions. Each destination system owns its own data store, business logic, and processing patterns. For example, the Enrollment Management system (see companion spec 11-event-sourcing-architecture-spec.md) implements event sourcing internally for 834 transactions but operates completely independently from the core platform.
+
+This pattern:
 
 1. Prevents tight coupling between ingestion throughput and downstream system responsiveness.
 2. Enables independent scaling and retry semantics per subscriber via Service Bus DLQs.
 3. Provides a normalized, minimal metadata contract (no PHI) for internal event processing.
+4. Allows destination systems to implement their own architectural patterns without impacting the platform.
 
 Outbound acknowledgment and response generation (TA1, 999, 271, 277, 835) is orchestrated separately (Durable Function or scheduled ADF pipeline) aggregating subsystem outcomes and constructing response EDI files in an outbound staging area before partner pickup. See companion `08-transaction-routing-outbound-spec.md` for full details.
 
@@ -144,7 +152,7 @@ Performance Considerations:
 - Azure Service Bus (Topics): Durable, ordered, filterable fan‑out decoupling ingestion from downstream processing with DLQ isolation.
 - Purview: Central governance & lineage (mandatory for regulated data lineage evidence).
 - Key Vault & Managed Identities: Eliminates embedded secrets, supports rotation.
-- IaC (Bicep preferred, Terraform optional): Declarative, modular, environment parity.
+- IaC (Bicep): Declarative, modular, environment parity.
 
 ## 9. High-Level Naming Conventions (Illustrative)
 
@@ -396,5 +404,230 @@ Only minimal, non-PHI envelope metadata is published on the routing topic: `tran
 - Add FHIR mapping reference table (837 -> Claim FHIR resources; 834 -> Coverage/Enrollment; 270/271 -> CoverageEligibilityRequest/Response) when Phase 2 semantics parsing begins.
 - Introduce automated completeness scoring for 837 (presence of HI segments, CLM line counts) feeding quality dashboards.
 - Evaluate addition of 275 (attachments) if prior authorization / claim documentation exchange becomes in-scope.
+
+---
+
+## Appendix B: Component Responsibility Matrix
+
+This matrix clarifies which architectural components handle each transaction type through its lifecycle, from ingestion through acknowledgment generation. Use this for impact analysis when modifying system components.
+
+### B.1 Transaction Processing & Acknowledgment Responsibility
+
+| Inbound Transaction | Ingestion & Validation | Routing | Destination System | Technical Ack Generator | Business Response Generator | Notes |
+|---------------------|------------------------|---------|-------------------|------------------------|----------------------------|-------|
+| **834 (Enrollment)** | Core Platform (ADF) | Router Function | Enrollment Management (Event Sourcing) | Core (TA1 if structural), Core (999) | N/A (internal state changes only) | Large file handling; concurrent member processing |
+| **837 (Claims)** | Core Platform (ADF) | Router Function | Claims Processing | Core (TA1, 999) | Outbound Orchestrator (277CA) | Multi-ST fan-out; control number critical |
+| **835 (Remittance)** | Core Platform (ADF) | Router Function | Remittance Processing | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring; stricter ACL |
+| **270 (Eligibility Inquiry)** | Core Platform (ADF) | Router Function | Eligibility Service | Core (999) | Outbound Orchestrator (271) | Low latency path; p95 < 2 min target |
+| **271 (Eligibility Response)** | Core Platform (ADF) | Optional (analytics) | Analytics (optional) | Core (999) | N/A (already response) | Stored for trace; may skip routing if configured |
+| **276 (Claim Status Inquiry)** | Core Platform (ADF) | Router Function | Claims Status Service | Core (999) | Outbound Orchestrator (277) | Parity with 270 latency |
+| **277 (Claim Status)** | Core Platform (ADF) | Router Function | Claims Status Service | Core (999) | Outbound Orchestrator (835 eventual) | Drives remittance SLA timer |
+| **277CA (Claim Ack)** | Core Platform (ADF) | Router Function | Claims Processing | Core (999) | Outbound Orchestrator (277 lifecycle updates) | Marks claim validation stage |
+| **278 (Prior Auth Request)** | Core Platform (ADF) | Router Function | Prior Authorization Service | Core (999) | Outbound Orchestrator (278 Response) | Priority escalation via partner config |
+| **278 (Prior Auth Response)** | Core Platform (ADF) | Router Function (analytics) | Analytics (optional) | Core (999 if errors) | N/A (already response) | Completion of auth lifecycle |
+| **820 (Payroll Deduction)** | Core Platform (ADF) | Router Function | Finance/Remittance | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring |
+| **824 (Application Advice)** | Core Platform (ADF) | Optional (analytics) | Analytics | Core (999) | N/A (already application response) | Generated internally for business rejects; may skip routing |
+| **999 (Functional Ack - inbound)** | Core Platform (ADF) | Router Function | Ack Correlation Service | Core (TA1 if envelope error) | N/A | Correlates to outbound files; updates validation metrics |
+| **TA1 (Interchange Ack - inbound)** | Core Platform (ADF) | Ack Correlation Service | Ack Correlation Service | N/A (we received it) | N/A | Immediate structural failure escalation |
+
+### B.2 Component Definitions
+
+| Component | Responsibility | Technology |
+|-----------|---------------|------------|
+| **Core Platform (ADF)** | File ingestion, structural validation, raw persistence, metadata extraction | Azure Data Factory + Storage Events |
+| **Router Function** | Envelope parsing (ISA/GS/ST), routing message publication | Azure Function (HTTP/Event trigger) |
+| **Destination Systems** | Business logic processing, domain-specific data persistence, outcome signal generation | Independent applications (Enrollment: Event Sourcing + SQL; Claims: TBD; Eligibility: TBD; Remittance: TBD) |
+| **Core Technical Ack Generator** | TA1 (interchange errors), 999 (syntax validation) generation immediately post-ingestion | Core Platform (ADF activity or inline Function) |
+| **Outbound Orchestrator** | Business response aggregation (271, 277CA, 278R, 835), control number management, file assembly | Azure Function (Timer/Durable) + Azure SQL (control store) |
+| **Ack Correlation Service** | Tracks inbound acks (999, TA1) received from partners, correlates to outbound files | Analytics / Monitoring (Log Analytics queries) |
+
+### B.3 Acknowledgment Type Matrix
+
+| Ack Type | Trigger Condition | Generated By | Timing | SLA Target |
+|----------|------------------|--------------|--------|------------|
+| **TA1** | ISA/IEA mismatch or structural interchange errors | Core Platform | **Deferred post-validation** (< 5 min acceptable) | < 5 min from ingestion |
+| **999** | Functional group or transaction syntax validation | Core Platform | Post-structural validation | < 15 min from ingestion |
+| **271** | Successful 270 eligibility inquiry processing | Outbound Orchestrator (aggregates Eligibility Service outcomes) | After eligibility determination | < 5 min from 270 ingestion |
+| **277** | Claim status update or inquiry response | Outbound Orchestrator (aggregates Claims Service outcomes) | Variable (inquiry vs lifecycle update) | < 30 min (inquiry); batch (lifecycle) |
+| **277CA** | Claim acceptance acknowledgment | Outbound Orchestrator (aggregates Claims intake validation) | After initial claim validation | < 4 hrs from 837 ingestion |
+| **278 Response** | Prior authorization determination | Outbound Orchestrator (aggregates Prior Auth Service outcomes) | After authorization review | < 15 min from 278 request |
+| **824** | Application-level rejection (business rule failure) | Outbound Orchestrator (triggered by destination system business reject signal) | On reject condition | Variable (within parent transaction SLA) |
+| **835** | Payment remittance advice | Outbound Orchestrator (aggregates payment cycle outcomes) | Payment cycle completion | Payer-specific (e.g., weekly) |
+
+### B.4 Data Flow Sequence by Transaction Type
+
+#### B.4.1 837 Claim (Full Lifecycle Example)
+
+```
+1. Partner SFTP Upload (837 file)
+   ↓
+2. Core Platform Ingestion (ADF)
+   - Validate ISA/IEA envelope
+   - Persist raw file (immutable)
+   - Extract metadata
+   ↓
+3. Core Technical Ack Generation
+   - Generate TA1 if structural errors (defer OK)
+   - Generate 999 for syntax validation
+   ↓
+4. Router Function
+   - Parse ST segments (claims)
+   - Publish routing messages to Service Bus (edi-routing)
+   ↓
+5. Claims Processing (Destination System)
+   - Subscribe to Service Bus (filter: transactionSet = '837%')
+   - Process claim business logic
+   - Write outcome signal to staging (accepted/rejected/pended)
+   ↓
+6. Outbound Orchestrator
+   - Poll/event-trigger from staging
+   - Aggregate claim outcomes
+   - Generate 277CA (claim acknowledgment)
+   - Acquire control numbers from Azure SQL
+   - Persist 277CA file to outbound storage
+   ↓
+7. Partner Retrieval (SFTP)
+   - Partner downloads TA1, 999, 277CA from outbound path
+```
+
+#### B.4.2 270/271 Eligibility (Fast Path Example)
+
+```
+1. Partner SFTP Upload (270 inquiry)
+   ↓
+2. Core Platform Ingestion (ADF) - validate & persist
+   ↓
+3. Core Technical Ack (999 - minimal delay)
+   ↓
+4. Router Function - publish to edi-routing
+   ↓
+5. Eligibility Service (Destination System)
+   - Subscribe (filter: transactionSet = '270')
+   - Determine eligibility
+   - Write outcome signal (eligible/not eligible/pended)
+   ↓
+6. Outbound Orchestrator
+   - Generate 271 response (< 5 min target)
+   - Persist to outbound storage
+   ↓
+7. Partner Retrieval (999 + 271)
+```
+
+#### B.4.3 834 Enrollment (Event Sourcing Example)
+
+```
+1. Partner SFTP Upload (834 batch)
+   ↓
+2. Core Platform Ingestion - validate & persist raw
+   ↓
+3. Core Technical Ack (TA1 if needed, 999)
+   ↓
+4. Router Function - publish to edi-routing
+   ↓
+5. Enrollment Management (Event Sourcing Destination System)
+   - Subscribe (filter: transactionSet = '834')
+   - Append domain events (MemberEnrolled, CoverageChanged, etc.)
+   - Build projections (current enrollment state)
+   - Write outcome signal (processed count, errors)
+   ↓
+6. Outbound Orchestrator
+   - Optional: Generate 824 if application-level rejects
+   ↓
+7. Partner Retrieval (TA1, 999, optional 824)
+```
+
+### B.5 Component Modification Impact Analysis
+
+Use this matrix to assess blast radius when modifying components:
+
+| Component Change | Impacted Transaction Types | Testing Focus | Rollback Complexity |
+|------------------|---------------------------|---------------|---------------------|
+| **Core Ingestion Pipeline** | ALL | Full regression (all transaction types) | High (affects all partners) |
+| **Router Function** | ALL (routing-dependent) | Routing message schema, Service Bus delivery | Medium (isolated Function; previous version redeployable) |
+| **Outbound Orchestrator** | 271, 277CA, 278R, 835, 824 | Business response generation, control numbers | Medium (staging isolation limits blast radius) |
+| **Control Number Store** | ALL (outbound acks) | Concurrency, gap detection, rollover | High (data persistence; requires backup/restore testing) |
+| **Destination System (e.g., Claims)** | 837, 276, 277, 835 | Domain-specific; does not affect other transaction types | Low (isolated; other systems unaffected) |
+| **Eligibility Service** | 270, 271 | Eligibility determination logic, latency | Low (isolated) |
+| **Enrollment Management** | 834, optional 824 | Event sourcing, projections, reversal | Low (isolated; see doc 11) |
+
+### B.6 Design Decisions Summary
+
+| Decision Point | Choice | Rationale | Document Reference |
+|----------------|--------|-----------|-------------------|
+| **Control Number Store** | Azure SQL Database | ACID guarantees, optimistic concurrency, native backup/DR, observability integration | Doc 08 §14 |
+| **TA1 Generation Timing** | Deferred post-validation (< 5 min acceptable) | Allows asynchronous processing without impacting ingestion throughput; meets SLA | Doc 08 §7, Appendix B.3 |
+| **Routing Backbone** | Azure Service Bus Topics | Durable, ordered, filterable, DLQ isolation, proven at scale | Doc 01 §6, Doc 08 §3 |
+| **Destination System Coupling** | Loosely coupled via Service Bus subscriptions | Enables independent scaling, deployment, and architecture choices (event sourcing vs CRUD) | Doc 01 §6, Doc 08 §3.1 |
+| **Multi-Region DR** | Active-Passive with paired region | Cost-effective; RTO 2 hours acceptable; manual failover | Doc 07 §?, Appendix B.7 (pending) |
+| **Purview Lineage** | ADF automatic lineage (built-in) | Sufficient for Phase 1; custom REST API calls deferred | Doc 01 §6, Doc 02 §6 |
+| **Event Grid vs Service Bus for Routing** | Service Bus (pending evaluation) | Ordering, filtering, DLQ required; Event Grid assessed for cost optimization | Doc 01 §6, Appendix B.8 (pending) |
+
+### B.7 Multi-Region Disaster Recovery Strategy (Active-Passive)
+
+**Decision: Active-Passive with Azure Paired Region** (cost-effective; RTO 2 hours acceptable)
+
+| Component | Primary Region | Secondary Region (Paired) | Failover Strategy |
+|-----------|----------------|---------------------------|-------------------|
+| **Storage (Raw/Outbound)** | East US 2 (active writes) | Central US (GRS read-only) | Manual failover trigger; promote secondary to read-write |
+| **Azure SQL (Control Numbers)** | East US 2 (active) | Central US (geo-replica read-only) | Manual failover; validate counter integrity post-failover |
+| **Service Bus Namespace** | East US 2 (active) | Central US (standby namespace, no geo-DR in Standard) | Recreate subscriptions in secondary; redirect router Function |
+| **ADF** | East US 2 (active) | Central US (IaC redeploy) | Deploy ADF via Bicep to secondary; update triggers |
+| **Functions (Router, Orchestrator)** | East US 2 (active) | Central US (standby deployment) | Update Function App DNS/config to secondary region |
+| **Key Vault** | East US 2 (active) | Central US (replicated secrets) | Azure Key Vault geo-redundant by default; access via secondary endpoint |
+| **Log Analytics** | East US 2 (active) | Central US (separate workspace or same multi-region) | Maintain separate workspace in secondary; merge queries for global view |
+
+**Failover Procedure**:
+
+1. **Detection**: Primary region outage detected via health probes (> 15 min sustained failure)
+2. **Decision**: Declare disaster (exec approval required for prod)
+3. **Execution**:
+   - Promote Storage GRS secondary to read-write (15-30 min)
+   - Failover Azure SQL to geo-replica (< 5 min)
+   - Redirect router Function config to secondary Service Bus namespace
+   - Deploy ADF pipelines to secondary region via IaC
+   - Update DNS / Front Door routing if applicable
+4. **Validation**: 
+   - Run synthetic ingestion test file
+   - Verify routing message delivery
+   - Confirm control number integrity (run gap detection query)
+5. **Communication**: Notify partners of temporary disruptions (< 2 hrs target)
+
+**Failback Procedure**:
+
+- After primary region restored, reverse failover steps
+- Synchronize data changes made during outage (control numbers, audit logs)
+- Validate parity before switching traffic back
+
+**Cost Impact**: GRS storage ~2x LRS cost; geo-replica SQL ~2x single region; standby Functions minimal (consumption or stopped). Estimated +$200-300/month for DR posture (see Doc 10 Budget Plan).
+
+**Testing**: Annual DR drill (synthetic failover) to validate RTO/RPO; document lessons learned.
+
+### B.8 Event Grid vs Service Bus for Routing Layer (Evaluation Pending)
+
+**Current State**: Service Bus Topics for routing (Doc 01, 08)
+
+**Event Grid Evaluation Criteria**:
+
+| Requirement | Service Bus | Event Grid | Recommendation |
+|-------------|-------------|------------|----------------|
+| **Message Ordering** | Guaranteed (sessions) | Not guaranteed | **Service Bus** (ordering critical for transactional integrity) |
+| **DLQ & Retry** | Built-in per subscription | Per subscription (20 retries max) | **Service Bus** (mature DLQ handling) |
+| **Filtering** | SQL filters (rich) | Advanced filtering (limited compared to SQL) | **Service Bus** (richer filter expressions) |
+| **Throughput** | 1000+ msg/sec (Standard); more in Premium | 10M events/sec | Either sufficient for 5k files/week |
+| **Cost** | ~$10-40/month (Standard; see Doc 10) | $0.60 per million events (first 100k free) | **Event Grid cheaper** if volume low |
+| **At-Least-Once Delivery** | Yes | Yes | Both |
+| **Integration with ADF** | Native | Native (via Event Grid trigger) | Both |
+| **Observability** | Mature metrics | Mature metrics | Both |
+
+**Decision**: **Continue with Service Bus** for routing due to:
+- Ordering guarantees (critical for transactional sequences like 837 multi-ST)
+- Richer SQL filtering (complex partner/transaction rules)
+- Mature DLQ and retry policies (operational maturity)
+
+**Event Grid Use Cases** (where appropriate):
+- Blob storage events (already in use for ingestion trigger)
+- Lightweight fan-out for analytics/observability sinks (non-critical paths)
+
+**Reassessment Trigger**: If monthly routing messages exceed 5 million (cost crossover point), reevaluate Event Grid for non-ordered transaction types (e.g., 834 where order within file less critical).
 
 ---

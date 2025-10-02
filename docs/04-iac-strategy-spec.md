@@ -2,7 +2,7 @@
 
 ## 1. Objectives
 
-Provide a standardized, repeatable, audited approach for provisioning and updating all Azure resources supporting EDI ingestion using declarative IaC (Bicep primary; Terraform optional) integrated with CI/CD pipelines.
+Provide a standardized, repeatable, audited approach for provisioning and updating all Azure resources supporting EDI ingestion using declarative IaC (Bicep) integrated with CI/CD pipelines.
 
 ## 2. Scope
 
@@ -11,11 +11,71 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
 ## 3. Technology Selection
 
 | Choice | Rationale |
-|--------|-----------|
-| Bicep (primary) | Native Azure, concise syntax, what-if deployments, modularization |
-| Terraform (optional bridge) | Multi-cloud consistency if organization standard present |
+|--------|-----------||
+| Bicep | Native Azure, concise syntax, what-if deployments, modularization |
 | azd (Azure Developer CLI) | Environment templating & consistent provisioning workflow |
-| GitHub / Azure DevOps Pipelines | Version control + automated deployment gates |
+| GitHub Actions | Version control + automated deployment gates, native GitHub integration |
+
+## 3.1 GitHub Actions Workflow Structure
+
+### Workflow Organization
+
+```
+/.github
+  /workflows
+    infra-ci.yml                    # IaC validation on PR
+    infra-cd.yml                    # Environment deployments
+    function-ci.yml                 # Function app build & test
+    function-cd.yml                 # Function deployment
+    adf-export.yml                  # Data Factory export
+    adf-deploy.yml                  # Data Factory deployment
+    config-validation.yml           # Partner config validation
+    drift-detection.yml             # Scheduled what-if check
+    security-scan.yml               # Dependency & secret scanning
+  /actions
+    azure-login/                    # Reusable login composite action
+    bicep-whatif/                   # Reusable what-if composite action
+```
+
+### Authentication Strategy
+
+**Recommended: OpenID Connect (OIDC) Federated Identity**
+
+Benefits over Service Principal secrets:
+- No secret rotation required
+- Short-lived tokens (auto-expiring)
+- GitHub-native trust relationship
+- Audit trail via Azure AD sign-in logs
+
+**Setup Requirements:**
+
+1. **Azure AD App Registration** (per environment or shared)
+   - Federated credential configuration:
+     - Issuer: `https://token.actions.githubusercontent.com`
+     - Subject: `repo:vincemic/ai-adf-edi-spec:environment:prod`
+     - Audience: `api://AzureADTokenExchange`
+
+2. **GitHub Secrets** (Repository-level)
+   ```
+   AZURE_CLIENT_ID           # Application (client) ID
+   AZURE_TENANT_ID           # Directory (tenant) ID
+   AZURE_SUBSCRIPTION_ID     # Subscription ID
+   ```
+
+3. **GitHub Environments** (with protection rules)
+   - `dev` - Auto-deploy on main branch
+   - `test` - Manual approval (1 reviewer)
+   - `prod` - Manual approval (2 reviewers, security team)
+
+### Workflow Triggers
+
+| Trigger | Use Case | Workflow |
+|---------|----------|----------|
+| `pull_request` | Validation & what-if | infra-ci.yml, function-ci.yml |
+| `push: [main]` | Auto-deploy to dev | infra-cd.yml (dev job) |
+| `workflow_dispatch` | Manual deploy | All CD workflows |
+| `schedule: '0 2 * * *'` | Nightly drift check | drift-detection.yml |
+| `release: published` | Prod release | infra-cd.yml (prod job) |
 
 ## 4. Repository Layout (Illustrative)
 
@@ -36,12 +96,6 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
       monitoring.bicep
       purview.bicep
       policy.bicep
-  /terraform (optional)
-    main.tf
-    modules/
-      storage/
-      datafactory/
-      keyvault/
 /env
   dev.parameters.json
   test.parameters.json
@@ -77,13 +131,69 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
 
 ## 7. Deployment Workflow (Bicep)
 
-1. PR merges to `main` after review & what-if check.
-2. CI: Lint (`bicep build`), security scan (terraform compliance if used), `what-if` against dev.
-3. CD Stage 1 (Dev): `az deployment group what-if` then `az deployment group create`.
-4. Automated integration tests (connectivity, role assignment validation, event firing test blob).
-5. Conditional routing tests: publish synthetic routing message (if enableRouting) and assert subscription delivery (script).
-5. Manual approval gate for Test & Prod promoting same artifact (built template + parameter set hash).
-6. Prod deployment with `what-if` preview required for approver signoff.
+### GitHub Actions Pipeline Flow
+
+```mermaid
+graph LR
+    A[PR Created] --> B[infra-ci.yml]
+    B --> C{Checks Pass?}
+    C -->|No| D[Block Merge]
+    C -->|Yes| E[Merge to main]
+    E --> F[infra-cd.yml: dev]
+    F --> G[Integration Tests]
+    G --> H{Manual Approve?}
+    H -->|Yes| I[infra-cd.yml: test]
+    I --> J{Manual Approve?}
+    J -->|Yes| K[infra-cd.yml: prod]
+```
+
+### Detailed Stage Breakdown
+
+**1. Pull Request Validation** (`infra-ci.yml`)
+- Checkout repository
+- Azure CLI setup
+- Bicep build & lint (fail on warnings)
+- PSRule for Azure security scan
+- Checkov IaC security scan
+- Azure login (OIDC, dev subscription)
+- `az deployment group what-if` against dev
+- Post what-if summary as PR comment
+- Upload build artifacts (compiled ARM JSON)
+
+**2. Dev Environment Deployment** (triggered on merge to `main`)
+- Download build artifact
+- Azure login (dev environment)
+- `az deployment group create` with dev parameters
+- Wait for deployment completion
+- Run smoke tests:
+  - Storage account connectivity
+  - Key Vault RBAC validation
+  - Service Bus topic exists
+  - Data Factory managed identity active
+- Upload deployment manifest (resource IDs, outputs)
+
+**3. Integration Tests** (post-dev deployment)
+- Generate synthetic EDI file
+- Upload via SFTP (test partner account)
+- Poll for file in raw zone (timeout 5 min)
+- Verify routing message published (if routing enabled)
+- Check metadata in Log Analytics
+
+**4. Test Environment Deployment** (manual approval required)
+- GitHub Environment protection: 1 approver from data-engineering team
+- Reuse compiled artifact from dev
+- `az deployment group what-if` (post as deployment comment)
+- Deploy with test parameters
+- Run integration tests
+
+**5. Production Deployment** (manual approval required)
+- GitHub Environment protection: 2 approvers (security + platform lead)
+- Change management ticket required (validated via API or manual)
+- `az deployment group what-if` with annotation
+- Deploy with prod parameters
+- Post-deployment validation
+- Create release annotation in Log Analytics
+- Notify stakeholders (Teams webhook)
 
 ## 8. Data Factory Assets Versioning
 
@@ -107,28 +217,20 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
 - Example policies: disallow-public-keyvault, enforce-https-storage, require-private-endpoints, tag-enforcement.
 - Deployed in management group or subscription context (separate pipeline if org standard).
 
-## 11. Terraform (If Adopted)
-
-- Remote state: Azure Storage backend (`tfstate` container) with state lock (Blob lease).
-- State separation per environment: `tfstate/edi-ingest-{env}.tfstate`.
-- Use `terraform plan` in PR, store plan artifact; apply only after approval.
-- Mirror resource parity with Bicep modules; ensure no drift by choosing single source-of-truth (avoid mixed partial ownership).
-
-## 12. Drift Detection
+## 11. Drift Detection
 
 | Mechanism | Description |
 |----------|-------------|
 | `what-if` in CI | Flags unexpected resource changes |
-| Terraform plan (if used) | Shows drift vs. state |
 | Azure Policy compliance scans | Identify config deviations |
 | Scheduled pipeline | Nightly `what-if` summary report to channel |
 
 ## 13. Testing Strategy (IaC)
 
 | Test Type | Tool | Purpose |
-|----------|------|---------|
+|----------|------|---------||
 | Lint | `bicep build` + custom scripts | Syntax & best practice |
-| Security Scan | Checkov/Terraform compliance, PSRule for Azure | Misconfig detection |
+| Security Scan | PSRule for Azure, Checkov | Misconfig detection |
 | Unit (Module) | Deployment to ephemeral RG | Validate outputs & dependencies |
 | Integration | Deploy dev env; run synthetic ingestion event | Validate end-to-end |
 | Policy Compliance | `az policy state summarize` | Confirm enforcement |
@@ -271,7 +373,6 @@ PartitionKey: `COUNTER` | RowKey: `<partnerCode>-<sequenceType>` | `currentValue
 | Risk | Mitigation |
 |------|-----------|
 | Drift via portal edits | Nightly what-if + policy deny effects |
-| Mixed IaC tools conflict | Establish primary (Bicep) and restrict Terraform to specific layer if used |
 | Secrets accidental commit | Git hooks + secret scanning (TruffleHog) |
 | Large blast radius changes | Module scoping + incremental deployments |
 | Policy assignment timing | Separate pipeline ensures policies exist before resource deploy |
@@ -283,7 +384,6 @@ PartitionKey: `COUNTER` | RowKey: `<partnerCode>-<sequenceType>` | `currentValue
 ## 20. Open Items
 
 - Confirm adoption of azd vs. native scripts
-- Confirm Terraform necessity
 - Define ephemeral preview environment lifecycle
 
 ---

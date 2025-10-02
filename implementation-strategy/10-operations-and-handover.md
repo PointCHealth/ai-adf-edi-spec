@@ -4,10 +4,21 @@
 ## Prompt
 You are defining day-2 operations, support model, handover artifacts, and continuous improvement loops for the EDI platform.
 
+### Context Inputs
+- Operations spec: `docs/06-operations-spec.md`
+- ACK SLA thresholds: `ACK_SLA.md`
+- Partner portal runbook: `docs/partner-portal/09-operations-runbook.md`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+
 ### Objectives
 1. Specify operational roles & responsibilities (L1/L2/L3, on-call, platform engineering, security)
 2. Define runbook inventory referencing `docs/06-operations-spec.md` & partner portal runbook
-3. Provide incident classification & severity matrix (S0-S4) with example scenarios
+3. Provide incident classification & severity matrix (S0-S4) with example scenarios and response time targets:
+   - **S0 (Critical)**: Platform down / PHI exposure → 15 min response
+   - **S1 (High)**: Major function degraded → 1 hour response
+   - **S2 (Medium)**: Minor function degraded → 4 hours response
+   - **S3 (Low)**: Cosmetic / workaround exists → 1 business day
+   - **S4 (Enhancement)**: Future improvement → Backlog
 4. Outline monitoring & alert triage workflow (ingest -> classify -> act -> resolve -> postmortem)
 5. Supply SLOs & error budgets (align with latency, availability, success rate metrics)
 6. Describe change management & deployment freeze policies
@@ -38,9 +49,10 @@ You are defining day-2 operations, support model, handover artifacts, and contin
 
 ### Acceptance Criteria
 - RACI includes at least 5 distinct roles
-- Each incident severity has defined response & comms expectations
+- Each incident severity (S0-S4) has defined response time, escalation path, and communication expectations
 - Runbook inventory maps each runbook to trigger & owner
 - Handover checklist >= 15 discrete items
+- Incident severity matrix includes example scenarios from operational experience (e.g., S0: all ingestion failed, data breach; S1: routing DLQ > 1000, p95 latency > 30m)
 
 ### Variable Placeholders
 - PRIMARY_SLO_LATENCY_P95_MS = <number>

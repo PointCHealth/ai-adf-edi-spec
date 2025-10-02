@@ -4,6 +4,12 @@
 ## Prompt
 You are formalizing the initial security control plane for the EDI platform. Build on naming, RBAC and token models from previous prompts.
 
+### Context Inputs
+- Security & compliance reference: `docs/03-security-compliance-spec.md`
+- PGP key lifecycle: `docs/partner-portal/diagrams/pgp-key-lifecycle.mmd`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+- Architecture overview: `docs/01-architecture-spec.md`
+
 ### Objectives
 1. Define threat model summary (key assets, primary threat actors, top misuse cases) referencing `docs/03-security-compliance-spec.md`
 2. Propose layered defensive controls (prevent/detect/respond) across identity, network, data, code, runtime

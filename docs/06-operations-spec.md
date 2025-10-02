@@ -233,6 +233,117 @@ AckAssembly_CL
 | OutboundAssemblyLatencyMs p95 | < 10 min |
 | RoutingDLQCount | 0 sustained |
 | OutboundErrorRate | < 1% |
+
+## 15. GitHub Actions Operational Procedures
+
+### 15.1 Workflow Monitoring
+
+**Daily Checklist:**
+- Review failed workflow runs in Actions tab
+- Check deployment queue for blocked environments
+- Verify scheduled workflows executed (drift detection, ADF export)
+
+**Metrics to Track:**
+
+| Metric | Target | Alert Threshold |
+|--------|--------|----------------|
+| Workflow success rate | > 95% | < 90% over 24h |
+| Average deployment duration | < 15 min | > 25 min |
+| Queue time (test/prod) | < 2 hours | > 4 hours |
+| What-if execution time | < 5 min | > 10 min |
+
+**Access Workflow Logs:**
+```powershell
+# Via GitHub CLI
+gh run list --workflow=infra-cd.yml --limit 20
+gh run view <run-id> --log
+
+# Export for analysis
+gh run list --json conclusion,status,createdAt,name --jq '.[] | select(.conclusion=="failure")'
+```
+
+### 15.2 Manual Deployment Triggers
+
+**Emergency Hotfix Deployment:**
+
+1. Navigate to Actions → Infrastructure CD workflow
+2. Click "Run workflow"
+3. Select:
+   - Branch: `hotfix/*` or `main`
+   - Environment: `prod`
+   - (Optional) Change ticket ID
+4. Provide justification in run comment
+5. Approval required from on-call approvers
+
+**Partner Configuration Update (Off-Cycle):**
+
+```powershell
+# Trigger config validation workflow
+gh workflow run config-validation.yml \
+  --ref main \
+  -f config_file=config/partners/partners.json \
+  -f deploy_after_validate=true \
+  -f target_environment=prod
+```
+
+**Rollback to Previous Version:**
+
+```powershell
+# Find previous successful deployment
+gh run list --workflow=infra-cd.yml --status=success --limit 5
+
+# Trigger redeployment with specific commit
+gh workflow run infra-cd.yml \
+  --ref <commit-sha> \
+  -f environment=prod \
+  -f rollback=true
+```
+
+### 15.3 Workflow Failure Response Playbook
+
+| Failure Type | Immediate Action | Escalation |
+|-------------|------------------|------------|
+| Bicep validation error | Review PR comments; fix syntax; repush | Dev team |
+| What-if shows unexpected changes | Investigate drift; run manual what-if; update IaC | Platform engineer |
+| Azure login failure | Check federated credential expiry; verify RBAC | Security team |
+| Deployment timeout | Check Azure service health; retry with extended timeout | Platform + Azure support |
+| Integration test failure | Check test data; verify services running; review logs | QA + Dev team |
+| Approval timeout | Notify approvers via Teams; escalate per change mgmt | Change manager |
+
+### 15.4 GitHub Actions Cost Optimization
+
+**Strategies:**
+- Use artifact caching for dependencies (`actions/cache@v3`)
+- Conditional job execution (skip unnecessary environments)
+- Matrix strategy for parallel function builds
+- Self-hosted runners for high-volume workflows (consider cost vs. GitHub-hosted)
+- Retention policy: artifacts 30 days, logs 90 days
+
+**Monthly Cost Review:**
+```powershell
+# Estimate from workflow runs (manual calculation or API)
+gh api /repos/vincemic/ai-adf-edi-spec/actions/runs \
+  --paginate \
+  --jq '[.workflow_runs[] | {name, conclusion, run_started_at, updated_at, run_duration_minutes: (((.updated_at | fromdateiso8601) - (.run_started_at | fromdateiso8601)) / 60)}] | group_by(.name) | map({workflow: .[0].name, total_minutes: map(.run_duration_minutes) | add})'
+```
+
+### 15.5 Secrets & Credential Rotation
+
+**Federated Credential Rotation (Not Required - auto-rotates)**
+
+**GitHub Secrets Audit:**
+- Quarterly review of unused secrets
+- Validate OIDC app registrations still active
+- Test authentication in non-prod before prod rotation
+
+**Procedure if Credential Compromised:**
+1. Immediately delete federated credential in Azure AD
+2. Disable affected GitHub environment
+3. Create new app registration
+4. Update GitHub secrets
+5. Test in dev environment
+6. Re-enable environments
+7. Post-incident review
 | ControlNumberRetries Avg | < 2 |
 
 ## 15. Business Continuity & Recovery

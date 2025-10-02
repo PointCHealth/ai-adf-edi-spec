@@ -27,9 +27,9 @@ A routing layer decouples ingestion from internal processing using message/event
 | Azure Event Grid (ingestion event) | Source trigger to ADF; optional fan-out for simple subscribers |
 | Azure Service Bus (Topics) | Durable distribution of transaction routing messages with subscription filters |
 | Subscription Rules | Filter by `transactionSet`, `partnerCode`, `priority` |
-| Internal Subsystems (Eligibility, Claims, Enrollment, Remittance) | Consume routing messages to trigger domain processing flows |
-| Outbound Orchestrator (ADF / Durable Function) | Aggregates internal processing results into outbound EDI responses |
-| Storage: Outbound Staging | Temporary assembly area for response segments |
+| **Downstream Destination Systems** (External) | Independent applications (Eligibility Service, Claims Processing, Enrollment Management, Remittance) that subscribe to routing topic and implement their own business logic and data stores |
+| Outbound Orchestrator (ADF / Durable Function) | Aggregates destination system outcome signals into outbound EDI responses |
+| Storage: Outbound Staging | Temporary assembly area for response segments assembled from destination system outcomes |
 | Storage: Outbound Delivery | Final response files for SFTP pickup or push |
 
 ### 3.2 Message Flow (High-Level)
@@ -37,10 +37,13 @@ A routing layer decouples ingestion from internal processing using message/event
 1. Ingestion pipeline completes validation & raw persistence.
 2. Router Function reads blob (header slice) to extract envelope identifiers: ISA control number, GS functional group, ST transaction set IDs.
 3. For each ST segment (batch may contain multiple): emit routing message to Service Bus Topic `edi-routing` with body + metadata.
-4. Subsystem-specific subscriptions receive relevant messages (e.g., filter: `transactionSet IN ('270','276','834','835')`).
-5. Subsystem processes (internal logic) and writes outcome summary (ACK status, business response payload elements) to its outbound staging container/table.
-6. Outbound Orchestrator periodically (or event-driven) aggregates ready responses, builds appropriate EDI (e.g., 999 acknowledgement referencing original control numbers or 271 eligibility response) and writes to `outbound/partner=<code>/` path.
-7. Optional: Generate TA1 if ISA envelope structural errors detected early; send negative acknowledgment without further processing.
+4. **Destination system subscriptions** receive relevant messages (e.g., Enrollment Management filters: `transactionSet = '834'`; Eligibility filters: `transactionSet IN ('270','276')`).
+5. **Each destination system** (independent application with its own architecture):
+   - Processes transactions according to its business logic
+   - Maintains its own data store (e.g., Enrollment Management uses event sourcing; Claims may use relational)
+   - Writes outcome summary signals to **its designated outbound staging area** when ready to acknowledge
+6. Outbound Orchestrator (part of core platform) periodically aggregates outcome signals from all destination systems, builds appropriate EDI responses (TA1, 999, 271, 277CA, 835) referencing original control numbers, and writes to `outbound/partner=<code>/` path.
+7. TA1 Generation (Deferred): If ISA envelope structural errors detected during ingestion validation, TA1 negative acknowledgment is generated asynchronously by outbound orchestrator (< 5 min SLA) without emitting routing messages or further processing.
 8. SFTP partner retrieves response or receives notification (future: push via separate SFTP user folder `/outbound/<partnerCode>/`).
 
 ## 4. Routing Message Schema
@@ -176,7 +179,267 @@ Example:
 | `partner-profile.json` | Flags: expectsTA1, expects999, pgpRequired | `config/partners/` |
 | `subsystem-outcome-schema/` | Normalized staging schema definitions | `config/outbound/` |
 
-## 14. Open Items
+## 14. Control Number Store Specification (Azure SQL)
+
+### 14.1 Purpose & Design Decision
+
+The control number store maintains monotonic interchange (ISA13), functional group (GS06), and transaction set (ST02) control numbers for outbound EDI acknowledgments and responses. **Decision: Azure SQL Database** provides transactional ACID guarantees, optimistic concurrency via row versioning, native backup/recovery, and integration with existing Azure observability tools.
+
+### 14.2 Database Schema
+
+```sql
+-- Control Number Management Table
+CREATE TABLE [dbo].[ControlNumberCounters] (
+    [CounterId] INT IDENTITY(1,1) PRIMARY KEY,
+    [PartnerCode] NVARCHAR(15) NOT NULL,
+    [TransactionType] NVARCHAR(10) NOT NULL, -- '999', '271', '277CA', '835', etc.
+    [CounterType] NVARCHAR(20) NOT NULL, -- 'ISA', 'GS', 'ST'
+    [CurrentValue] BIGINT NOT NULL DEFAULT 1,
+    [MaxValue] BIGINT NOT NULL DEFAULT 999999999,
+    [LastIncrementUtc] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [LastFileGenerated] NVARCHAR(255) NULL,
+    [CreatedUtc] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [ModifiedUtc] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [RowVersion] ROWVERSION NOT NULL, -- Optimistic concurrency
+    CONSTRAINT [UQ_Counter] UNIQUE ([PartnerCode], [TransactionType], [CounterType])
+);
+
+CREATE NONCLUSTERED INDEX [IX_ControlNumber_Partner_Type] 
+    ON [dbo].[ControlNumberCounters]([PartnerCode], [TransactionType]) 
+    INCLUDE ([CurrentValue], [LastIncrementUtc]);
+
+-- Audit trail for control number usage
+CREATE TABLE [dbo].[ControlNumberAudit] (
+    [AuditId] BIGINT IDENTITY(1,1) PRIMARY KEY,
+    [CounterId] INT NOT NULL FOREIGN KEY REFERENCES [ControlNumberCounters]([CounterId]),
+    [ControlNumberIssued] BIGINT NOT NULL,
+    [OutboundFileId] UNIQUEIDENTIFIER NOT NULL, -- Link to AckAssembly metadata
+    [IssuedUtc] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [RetryCount] INT NOT NULL DEFAULT 0,
+    [Status] NVARCHAR(20) NOT NULL, -- 'ISSUED', 'PERSISTED', 'FAILED', 'REISSUED'
+    [Notes] NVARCHAR(500) NULL
+);
+
+CREATE NONCLUSTERED INDEX [IX_Audit_OutboundFile] 
+    ON [dbo].[ControlNumberAudit]([OutboundFileId]);
+```
+
+### 14.3 Concurrency Model
+
+**Optimistic Concurrency Control** using `ROWVERSION`:
+
+```sql
+-- Acquire next control number with retry logic
+DECLARE @CurrentRowVersion BINARY(8);
+DECLARE @CurrentValue BIGINT;
+DECLARE @NewValue BIGINT;
+DECLARE @MaxRetries INT = 5;
+DECLARE @RetryCount INT = 0;
+
+WHILE @RetryCount < @MaxRetries
+BEGIN
+    -- Read current value and row version
+    SELECT @CurrentValue = CurrentValue, 
+           @CurrentRowVersion = RowVersion
+    FROM [dbo].[ControlNumberCounters]
+    WHERE PartnerCode = @PartnerCode 
+      AND TransactionType = @TransactionType 
+      AND CounterType = @CounterType;
+
+    SET @NewValue = @CurrentValue + 1;
+
+    -- Check for rollover
+    IF @NewValue > (SELECT MaxValue FROM [dbo].[ControlNumberCounters] 
+                    WHERE PartnerCode = @PartnerCode 
+                      AND TransactionType = @TransactionType 
+                      AND CounterType = @CounterType)
+    BEGIN
+        RAISERROR('Control number max value exceeded', 16, 1);
+        RETURN;
+    END
+
+    -- Attempt update with concurrency check
+    UPDATE [dbo].[ControlNumberCounters]
+    SET CurrentValue = @NewValue,
+        LastIncrementUtc = GETUTCDATE(),
+        ModifiedUtc = GETUTCDATE()
+    WHERE PartnerCode = @PartnerCode 
+      AND TransactionType = @TransactionType 
+      AND CounterType = @CounterType
+      AND RowVersion = @CurrentRowVersion; -- Concurrency guard
+
+    IF @@ROWCOUNT = 1
+    BEGIN
+        -- Success - insert audit record
+        INSERT INTO [dbo].[ControlNumberAudit] 
+            (CounterId, ControlNumberIssued, OutboundFileId, RetryCount)
+        SELECT CounterId, @NewValue, @OutboundFileId, @RetryCount
+        FROM [dbo].[ControlNumberCounters]
+        WHERE PartnerCode = @PartnerCode 
+          AND TransactionType = @TransactionType 
+          AND CounterType = @CounterType;
+        
+        SELECT @NewValue AS NextControlNumber;
+        RETURN;
+    END
+
+    -- Collision detected - retry with exponential backoff
+    SET @RetryCount = @RetryCount + 1;
+    WAITFOR DELAY '00:00:00.100'; -- 100ms * 2^retry backoff simulated via WAITFOR
+END
+
+RAISERROR('Control number acquisition failed after max retries', 16, 1);
+```
+
+### 14.4 Gap Detection & Monitoring
+
+**Gap Detection Query** (runs as scheduled Log Analytics / SQL Agent job):
+
+```sql
+-- Detect gaps in issued control numbers per partner/type
+WITH NumberedAudit AS (
+    SELECT 
+        a.CounterId,
+        c.PartnerCode,
+        c.TransactionType,
+        c.CounterType,
+        a.ControlNumberIssued,
+        LAG(a.ControlNumberIssued) OVER (
+            PARTITION BY a.CounterId 
+            ORDER BY a.ControlNumberIssued
+        ) AS PreviousNumber
+    FROM [dbo].[ControlNumberAudit] a
+    INNER JOIN [dbo].[ControlNumberCounters] c ON a.CounterId = c.CounterId
+    WHERE a.IssuedUtc >= DATEADD(DAY, -30, GETUTCDATE())
+      AND a.Status IN ('ISSUED', 'PERSISTED')
+)
+SELECT 
+    PartnerCode,
+    TransactionType,
+    CounterType,
+    PreviousNumber AS GapStart,
+    ControlNumberIssued AS GapEnd,
+    (ControlNumberIssued - PreviousNumber - 1) AS GapSize
+FROM NumberedAudit
+WHERE ControlNumberIssued - PreviousNumber > 1
+ORDER BY PartnerCode, TransactionType, ControlNumberIssued;
+```
+
+Export results to Log Analytics custom table `ControlNumberGaps_CL` for alerting.
+
+### 14.5 Retention Policy
+
+| Data | Retention Period | Rationale |
+|------|------------------|-----------|
+| ControlNumberCounters (current state) | Indefinite (active counters) | Operational necessity |
+| ControlNumberAudit (history) | 7 years | HIPAA compliance (matches raw file retention) |
+| Archived audit records | Move to cold storage after 2 years | Cost optimization |
+
+**Archival Process** (monthly scheduled job):
+
+```sql
+-- Archive audit records older than 2 years to separate archive table
+INSERT INTO [dbo].[ControlNumberAudit_Archive]
+SELECT * FROM [dbo].[ControlNumberAudit]
+WHERE IssuedUtc < DATEADD(YEAR, -2, GETUTCDATE());
+
+DELETE FROM [dbo].[ControlNumberAudit]
+WHERE IssuedUtc < DATEADD(YEAR, -2, GETUTCDATE());
+```
+
+### 14.6 Rollover & Reset Handling
+
+When counter approaches `MaxValue`:
+
+1. **Warning Alert** at 90% threshold (e.g., 899,999,999 for 9-digit ISA13)
+2. **Coordination Window**: Schedule maintenance window with partners
+3. **Reset Procedure**:
+   ```sql
+   UPDATE [dbo].[ControlNumberCounters]
+   SET CurrentValue = 1,
+       ModifiedUtc = GETUTCDATE()
+   WHERE PartnerCode = @PartnerCode 
+     AND TransactionType = @TransactionType 
+     AND CounterType = @CounterType;
+   
+   -- Log reset event
+   INSERT INTO [dbo].[ControlNumberAudit]
+   (CounterId, ControlNumberIssued, OutboundFileId, Status, Notes)
+   VALUES (@CounterId, 1, NEWID(), 'RESET', 'Scheduled rollover maintenance');
+   ```
+4. Document gap in audit trail; communicate to partners per SLA
+
+### 14.7 Initialization & Partner Onboarding
+
+When adding new partner or transaction type:
+
+```sql
+-- Initialize counters for new partner
+INSERT INTO [dbo].[ControlNumberCounters] 
+    (PartnerCode, TransactionType, CounterType, CurrentValue, MaxValue)
+VALUES 
+    (@PartnerCode, @TransactionType, 'ISA', 1, 999999999),
+    (@PartnerCode, @TransactionType, 'GS', 1, 999999999),
+    (@PartnerCode, @TransactionType, 'ST', 1, 999999999);
+```
+
+Automated via partner onboarding IaC pipeline (Bicep deploy script post-action).
+
+### 14.8 Disaster Recovery
+
+- **Backup**: Azure SQL automated backups (Point-in-Time Restore up to 35 days)
+- **Geo-Replication**: Active geo-replication to paired region (read-only secondary)
+- **Failover**: Manual failover trigger; resume counter from last known good value in secondary
+- **Validation Post-Failover**: Run gap detection query; document any drift
+
+### 14.9 Performance Considerations
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Counter acquisition latency | < 50ms p95 | Single row read + update with index |
+| Concurrent acquisition throughput | 100+ TPS | Optimistic concurrency handles contention |
+| Retry rate | < 5% | Exponential backoff minimizes collision |
+| Gap detection query | < 5 sec | Run off-hours; indexed on IssuedUtc |
+
+**Scaling**: If throughput exceeds 500 TPS, consider partitioning by partner or introducing Redis cache for hot counters with periodic SQL flush.
+
+### 14.10 Security
+
+- **Encryption**: Transparent Data Encryption (TDE) enabled on database
+- **Access**: Outbound Orchestrator Managed Identity granted `db_datawriter` + `db_datareader` on counter tables only
+- **Audit**: Azure SQL Auditing enabled; log all UPDATE operations on ControlNumberCounters
+- **Network**: Private endpoint; no public access
+- **Secrets**: Connection string stored in Key Vault; referenced via Managed Identity
+
+### 14.11 Monitoring & Alerts
+
+**Custom Metrics** (exported to Log Analytics):
+
+```kusto
+// Control Number Retry Rate
+ControlNumberMetrics_CL
+| where TimeGenerated > ago(1h)
+| summarize TotalAttempts=sum(Attempts), Retries=sum(Retries) by bin(TimeGenerated, 5m)
+| extend RetryRate = (Retries * 100.0) / TotalAttempts
+| where RetryRate > 10 // Alert threshold
+```
+
+**Alert Rules**:
+
+| Condition | Threshold | Action |
+|-----------|-----------|--------|
+| Retry rate > 10% | 15 min sustained | Notify platform engineering |
+| Gap detected | Any occurrence | Critical alert + runbook link |
+| Counter > 80% max value | Single check | Warning + coordinate reset |
+| Acquisition latency p95 > 200ms | 30 min | Investigate database performance |
+
+### 14.12 Open Items (Post-Implementation)
+
+- **Resolved**: Control number store backend decision (Azure SQL selected)
+- **Pending**: Batching window for low-volume transaction types (e.g., 278 responses)
+- **Pending**: Event-driven assembly trigger vs. timer-based polling
+
+## 15. Open Items
 
 - Decide batching window per transaction type (e.g., 5 min vs. immediate)
 - SLA for outbound eligibility (target < 2 min?) vs. claims (batch)

@@ -271,13 +271,18 @@ Aggregates subsystem outcome fragments into standard acknowledgments / responses
 9. Log audit record `AckAssembly_CL` with latency and included routingIds.
 10. Errors: Move partial artifacts to `outbound-staging/errors/`; raise alert.
 
-### 21.3 TA1 Negative Acknowledgment Early Path
+### 21.3 TA1 Negative Acknowledgment Processing
 
-If router detects structural ISA/IEA mismatch before routing messages emission:
+**Timing Decision**: TA1 generation can be **deferred post-ingestion validation** (asynchronous) without operational impact, as long as the < 5 minute SLA is maintained. This allows the ingestion pipeline to prioritize throughput and raw file persistence.
 
-1. Generate TA1 immediately (no routing messages).
-2. Persist to outbound path; mark ingestion metadata `validationStatus=STRUCTURAL_ERROR`.
-3. Alert operations (Severity Medium unless volume spike).
+If structural ISA/IEA mismatch or interchange errors detected during validation:
+
+1. Mark ingestion metadata `validationStatus=STRUCTURAL_ERROR` and persist error details.
+2. **Deferred TA1 Generation**: Separate orchestrator or post-validation activity generates TA1 acknowledgment (negative response code) within 5 minutes of ingestion event.
+3. Persist TA1 to outbound path; no routing messages emitted (file bypasses domain processing).
+4. Alert operations (Severity Medium unless volume spike indicates partner misconfiguration).
+
+**Rationale**: Decoupling TA1 generation from synchronous ingestion path improves pipeline resilience and allows batching of acknowledgments where beneficial.
 
 ### 21.4 Control Number Collision Handling
 
@@ -304,8 +309,9 @@ If router detects structural ISA/IEA mismatch before routing messages emission:
 
 - Determine batching window per transaction set (eligibility near real-time vs. claims batch).
 - Decide on event-driven vs. scheduled trigger for outbound orchestrator.
-- Select counter store implementation (Table Storage vs. Durable Entity) balancing simplicity vs. concurrency guarantees.
-- Define SLAs for each acknowledgment type (e.g., 999 within 15 minutes, TA1 within 5 minutes).
+- **RESOLVED**: Counter store implementation = Azure SQL Database (see Doc 08 §14).
+- **RESOLVED**: TA1 generation timing = deferred post-validation (< 5 min SLA maintained; see §21.3).
+- Define SLAs for remaining acknowledgment types (e.g., 999 within 15 minutes, 271 within 5 minutes).
 
 ## 24. Open Issues (Original Ingestion Scope)
 
@@ -328,7 +334,7 @@ Cross-references the master transaction catalog (Architecture Spec Appendix A) t
 | 835 | Large multi-claim; high PHI & financial; stricter ACL. | Remittance processor. | 999 only (if inbound). | CLP/CAS not in routing. |
 | 837 (P/I/D) | Largest; consider future streaming peek optimization. | Claims intake; multiple ST -> multiple messages. | 999, 277CA, later 277 & 835. | ST count captured; claim counts downstream. |
 | 999 | Outbound primarily; inbound partner 999 archived. | Correlation subsystem only. | None further. | AK9 summary codes tracked downstream. |
-| TA1 | Immediate structural path. | Not routed. | Immediate TA1 generation. | Envelope error code persisted. |
+| TA1 | Deferred structural validation path (< 5 min SLA). | Not routed. | Deferred TA1 generation by outbound orchestrator. | Envelope error code persisted; structural_error flag. |
 | 271 / 277 / 278 Response / 277CA | Inbound responses stored for lifecycle trace. | Routed only if analytics needed. | Drives subsequent lifecycle timers (e.g., 835 expectation). | Status/decision latency metrics computed later. |
 
 ### 25.1 Routing Data Minimization

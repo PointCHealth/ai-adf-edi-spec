@@ -4,6 +4,12 @@
 ## Prompt
 You are designing automated build, test, security scan, and deployment pipelines for the EDI platform.
 
+### Context Inputs
+- IaC strategy: `docs/04-iac-strategy-spec.md`
+- GitHub Actions implementation guide: `docs/04a-github-actions-implementation.md`
+- SDLC & DevOps practices: `docs/05-sdlc-devops-spec.md`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+
 ### Objectives
 1. Define pipeline stages (validate, build, test, security-scan, package, deploy-infra, deploy-app, post-verify, promote)
 2. Provide stage responsibilities & success criteria
@@ -12,7 +18,7 @@ You are designing automated build, test, security scan, and deployment pipelines
 5. Integrate security & quality gates (SAST, dependency, secret scan, IaC scan, license compliance)
 6. Define environment promotion workflow & approvals
 7. Provide rollback automation approach (infra & app)
-8. Include sample YAML pipeline skeleton(s) (GitHub Actions or Azure DevOps) with reusable templates
+8. Include sample YAML pipeline skeleton(s) (GitHub Actions) with reusable templates
 9. Map required service connections / credentials & scopes
 10. Supply pipeline observability & DORA metrics capture approach
 
@@ -39,6 +45,7 @@ You are designing automated build, test, security scan, and deployment pipelines
 - Security gates positioned before deployment stages
 - Pipeline skeleton includes caching, parallelism where beneficial
 - Rollback differentiates infra vs app strategy
+- Reference `docs/04a-github-actions-implementation.md` §5 for production-ready workflow templates (Infrastructure CI/CD, Function CI/CD, Drift Detection)
 
 ### Variable Placeholders
 - CONTAINER_REGISTRY = <registry name>

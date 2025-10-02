@@ -26,8 +26,9 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 | Ingestion & Landing | Receive partner SFTP drops into secure storage | SFTP (managed service or partner-managed) -> ADLS Gen2 (raw container) |
 | Event Orchestration | Trigger downstream pipeline upon file arrival | Azure Data Factory (ADF) event pipeline, Storage Events |
 | Validation & Metadata | Interchange/envelope parsing, syntax validation, metadata extraction (control numbers, transaction set IDs) | ADF activities, Custom Function(s) or Data Flow (future) |
-| Routing | Classify & dispatch messages to appropriate downstream topics/handlers | Azure Function (Router), Service Bus Topic (`edi-routing`) + subscriptions with rule filters |
-| Outbound Orchestration | Generate and publish acknowledgments / response artifacts (TA1, 999, 277CA) | Azure Function (Outbound Orchestrator), Service Bus, Storage staging |
+| Routing | Classify & dispatch messages to appropriate downstream destination systems | Azure Function (Router), Service Bus Topic (`edi-routing`) + subscriptions with rule filters |
+| **Destination Systems (External)** | **Independent applications subscribing to routing messages** | **Enrollment Management (event sourcing), Eligibility Service, Claims Processing, Remittance - each with own architecture** |
+| Outbound Orchestration | Generate and publish acknowledgments / response artifacts (TA1, 999, 277CA) from destination system outcomes | Azure Function (Outbound Orchestrator), Service Bus, Storage staging |
 | Control Number Management | Detect gaps / duplicates; maintain sequence integrity | Metadata tables or logs + KQL queries (future durable store TBD) |
 | Observability & SLA | Latency, error mix, reject rates, backlog | Azure Monitor / Log Analytics (custom tables), KQL queries under `queries/kusto/` |
 | Governance & Tagging | Uniform taxonomy & cost/ownership tracking | Azure Policy + Tagging Standards (`09-tagging-governance-spec`) |
@@ -166,7 +167,7 @@ Mermaid `.mmd` sources under `docs/diagrams/` rendered to PNG via `scripts/gener
 | No control number durable store | Potential gap detection latency | Propose minimal schema & integration layer |
 | Absent synthetic ingestion scripts | Hard to test end-to-end | Create PowerShell + Python sample file drop simulator |
 | Policy assignment IaC absent | Governance drift risk | Author Bicep/Policy module set + pipeline step |
-| No CI/CD YAML pipelines | Manual deployments | Scaffold GitHub Actions / Azure DevOps YAML referencing Bicep what-if + deployment gates |
+| No CI/CD YAML pipelines | Manual deployments | Scaffold GitHub Actions YAML referencing Bicep what-if + deployment gates |
 
 ---
 ## 16. AI Task Patterns (Common Prompts This Context Enables)

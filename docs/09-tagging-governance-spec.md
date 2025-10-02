@@ -155,7 +155,7 @@ resource sb 'Microsoft.ServiceBus/namespaces@2023-01-01-preview' = {
 |--------------|-----------|-------|
 | `03-security-compliance-spec.md` | DataClassification / PHI / EncryptionScope | Tags feed compliance inventory & key rotation schedule. |
 | `04-iac-strategy-spec.md` | Tag parameter pattern | Standard `tags` object cascades across modules. |
-| `05-sdlc-devops-spec.md` | DeploymentPipeline / Version / ApprovedChangeId | Release pipelines stamp runtime values. |
+| `05-sdlc-devops-spec.md` | DeploymentPipeline / Version / ApprovedChangeId | GitHub Actions workflows stamp runtime values. |
 | `06-operations-spec.md` | Sensitivity / System | Drives alert routing and dashboards. |
 | `07-nfr-risks-spec.md` | Sensitivity derivation | Risk ratings map to tag defaults. |
 | `08-transaction-routing-outbound-spec.md` | System = routing/outbound | Routing artifacts classification and ownership. |

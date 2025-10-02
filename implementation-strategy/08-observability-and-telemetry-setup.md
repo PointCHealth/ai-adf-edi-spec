@@ -4,11 +4,21 @@
 ## Prompt
 You are defining an observability architecture integrating logs, metrics, traces, and business telemetry for the EDI platform.
 
+### Context Inputs
+- Operations spec: `docs/06-operations-spec.md`
+- Routing metrics: `docs/06-operations-spec.md` §4 (Routing Latency, DLQ Count, Assembly Latency, Control Number Retries)
+- ACK SLA thresholds: `ACK_SLA.md`
+- Observability queries: `queries/kusto/`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+
 ### Objectives
-1. Enumerate required telemetry dimensions (partnerId, transactionType, controlNumber, correlationId, routeId, outcome)
+1. Enumerate required telemetry dimensions (partnerId, transactionType, controlNumber, correlationId, routeId, outcome, ackType, controlNumberRetries)
 2. Define logging conventions (structure, levels, PII handling, redaction)
-3. Provide metrics taxonomy (technical vs business) & calculation approach
-4. Map existing KQL queries under `queries/kusto` to dashboards & alerts
+3. Provide metrics taxonomy (technical vs business) & calculation approach, including:
+   - **Routing Metrics**: RoutingLatencyMs (publishTime - validationCompleteTime), RoutingDLQCount
+   - **Outbound Metrics**: OutboundAssemblyLatencyMs (filePersisted - lastOutcomeReady), AckPublishCount, ControlNumberRetries
+   - **SLA Metrics**: Per-acknowledgment-type latency percentiles (TA1, 999, 271, 277CA, 835)
+4. Map existing KQL queries under `queries/kusto` to dashboards & alerts (including `ack_latency.kql`, `routing_latency_trend.kql`, `control_number_gap_detection.kql`, `dlq_routing_messages.kql`)
 5. Propose distributed tracing strategy (trace boundaries, span naming, baggage values)
 6. Define error categorization enrichment for diagnostics
 7. Outline alerting strategy (SLO vs anomaly vs threshold) with escalation paths

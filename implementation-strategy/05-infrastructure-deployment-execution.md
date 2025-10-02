@@ -4,6 +4,12 @@
 ## Prompt
 You are orchestrating first-time and repeatable environment deployments using Bicep modules defined in prior planning. Focus on reliability, idempotency, traceability.
 
+### Context Inputs
+- IaC strategy: `docs/04-iac-strategy-spec.md`
+- GitHub Actions implementation: `docs/04a-github-actions-implementation.md`
+- SDLC & DevOps practices: `docs/05-sdlc-devops-spec.md`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+
 ### Objectives
 1. Produce deployment runbook (phases, pre-checks, post-validation)
 2. Define parameter files strategy per environment & secret resolution mechanics

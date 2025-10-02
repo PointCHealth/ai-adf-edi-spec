@@ -4,8 +4,14 @@
 ## Prompt
 You are producing a comprehensive infrastructure design & Bicep module plan prior to authoring or extending templates in `infra/bicep/modules`.
 
+### Context Inputs
+- Architecture overview: `docs/01-architecture-spec.md`
+- Routing architecture: `docs/08-transaction-routing-outbound-spec.md`
+- Tagging & governance reference: `docs/09-tagging-governance-spec.md`
+- Security & compliance reference: `docs/03-security-compliance-spec.md`
+
 ### Objectives
-1. Inventory required Azure services & SKUs (Functions, Service Bus, Storage, Key Vault, App Config, Log Analytics, Application Insights, Event Grid, Data Factory if applicable, Container Registry)
+1. Inventory required Azure services & SKUs (Functions, Service Bus with Topics/Subscriptions, Storage, Key Vault, App Config, Log Analytics, Application Insights, Event Grid, Data Factory if applicable, Container Registry, Azure SQL for Control Number Store)
 2. Map each logical capability (routing, outbound assembly, control number management, partner portal backend, observability) to resource set & deployment unit
 3. Define module boundaries & composition (one module per capability vs shared primitives) with reuse strategy
 4. Produce parameter surface per module (mandatory vs optional, secureString vs string)
