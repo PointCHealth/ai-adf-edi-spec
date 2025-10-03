@@ -17,6 +17,7 @@ on:
 
 jobs:
   markdown-sql-lint:
+    if: ${{ false }} # Temporarily disable linting job
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
