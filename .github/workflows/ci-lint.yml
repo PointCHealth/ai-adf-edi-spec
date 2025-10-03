@@ -39,7 +39,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install sqlfluff
-        run: pip install sqlfluff==2.3.5
+        run: pip install "sqlfluff==2.3.5" "click<8.2"
 
       - name: Run sqlfluff lint
         run: sqlfluff lint --dialect tsql '**/*.sql'
