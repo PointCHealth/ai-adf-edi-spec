@@ -39,7 +39,7 @@ This specification bridges the **core platform routing layer** (see Doc 08) and 
 
 ### 3.1 System Boundary
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Core EDI Platform                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌─────────────────┐   │
@@ -97,7 +97,7 @@ A **Mapper** transforms:
 
 ### 4.2 Outbound Mapper Flow (Platform → Claim System)
 
-```
+```text
 ┌────────────────┐
 │ Routing Msg    │ (routingId, transactionSet, fileBlobPath, stPosition, etc.)
 └────────┬───────┘
@@ -123,7 +123,7 @@ A **Mapper** transforms:
 
 ### 4.3 Inbound Mapper Flow (Claim System → Platform)
 
-```
+```text
 ┌────────────────┐
 │ Claim System   │ (277 status update, 271 eligibility response, 835 remittance)
 │ Response Data  │ (Proprietary format: XML, JSON, DB row, etc.)
@@ -155,7 +155,7 @@ A **Mapper** transforms:
 
 **Structure**:
 
-```
+```text
 config/mappers/
 ├── claim-system-a/
 │   ├── 837-to-xml-v1.json          # Declarative field mapping
@@ -303,6 +303,7 @@ config/mappers/
 | **Biztalk/Integration Services (Legacy)** | Existing investment, gradual migration | X12 accelerators, XSLT |
 
 **Recommendation**: **Azure Functions (C#)** for claim system mappers due to:
+
 - Full control over X12 parsing (EDI.Net, X12Parser libraries)
 - Complex conditional logic support
 - Integration with Service Bus triggers
@@ -405,9 +406,11 @@ A **Connector** handles:
 **Inbound Flow**:
 
 1. Connector Function (timer trigger) queries claim system staging table for new responses:
+
    ```sql
    SELECT * FROM ClaimResponses WHERE ProcessedFlag = 0 ORDER BY CreatedDate
    ```
+
 2. Fetches response rows, triggers Inbound Mapper per row
 3. Mapper correlates via `claimSystemInternalId` → `routingId` lookup
 4. Writes canonical response to Outbound Staging
@@ -452,7 +455,7 @@ A **Connector** handles:
 
 **Structure**:
 
-```
+```text
 config/connectors/
 ├── claim-system-a/
 │   ├── connector-config.json       # Connection details, retry policy
@@ -556,7 +559,7 @@ config/connectors/
 
 **ID Chain**:
 
-```
+```text
 ingestionId (file-level, GUID)
   └─> routingId (ST-level, GUID)
        └─> claimSystemCorrelationId (claim system internal, varies by system)
@@ -593,7 +596,7 @@ CREATE INDEX IX_Correlation_ClaimSystem ON CorrelationMapping(ClaimSystemID, Sta
 
 **Lineage Graph**:
 
-```
+```text
 [Raw EDI File (837)]
   └─> [Routing Message (routingId)]
        └─> [Mapper Transformation (claim-system-a/837-to-xml)]
@@ -812,12 +815,14 @@ Sections:
 **Diagnosis**:
 
 1. Query Log Analytics for error details:
+
    ```kusto
    MapperTransformation_CL
    | where Status_s == "FAILED" and ClaimSystemID_s == "claim-system-a"
    | order by TimeGenerated desc
    | take 10
    ```
+
 2. Check `ValidationErrors_s` field for schema validation failures
 3. Retrieve original routing message from Service Bus dead-letter queue
 
@@ -836,12 +841,14 @@ Sections:
 **Diagnosis**:
 
 1. Query Log Analytics for error details:
+
    ```kusto
    ConnectorDelivery_CL
    | where Status_s == "FAILED" and ClaimSystemID_s == "claim-system-b"
    | order by TimeGenerated desc
    | take 10
    ```
+
 2. Check `ErrorMessage_s` for network errors, authentication failures, timeouts
 3. Verify claim system availability (ping, telnet to port, HTTP status check)
 4. Check Key Vault access logs for credential retrieval failures
@@ -862,10 +869,12 @@ Sections:
 **Diagnosis**:
 
 1. Query Correlation Store for missing `ClaimSystemCorrelationID`:
+
    ```sql
    SELECT * FROM CorrelationMapping 
    WHERE ClaimSystemCorrelationID = '<claim-system-id-from-response>'
    ```
+
 2. Check if response arrived before outbound delivery completed (timing issue)
 3. Verify claim system correlation ID format matches expected pattern
 

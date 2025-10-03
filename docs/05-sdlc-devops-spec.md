@@ -343,6 +343,7 @@ jobs:
 ```
 
 **Rollback Procedure:**
+
 1. Identify last successful deployment tag
 2. Trigger `workflow_dispatch` with rollback parameters
 3. Redeploy previous artifact version

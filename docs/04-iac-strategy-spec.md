@@ -20,7 +20,7 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
 
 ### Workflow Organization
 
-```
+```text
 /.github
   /workflows
     infra-ci.yml                    # IaC validation on PR
@@ -39,15 +39,16 @@ Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factor
 
 ### Authentication Strategy
 
-**Recommended: OpenID Connect (OIDC) Federated Identity**
+#### Recommended: OpenID Connect (OIDC) Federated Identity
 
 Benefits over Service Principal secrets:
+
 - No secret rotation required
 - Short-lived tokens (auto-expiring)
 - GitHub-native trust relationship
 - Audit trail via Azure AD sign-in logs
 
-**Setup Requirements:**
+#### Setup Requirements
 
 1. **Azure AD App Registration** (per environment or shared)
    - Federated credential configuration:
@@ -55,14 +56,15 @@ Benefits over Service Principal secrets:
      - Subject: `repo:vincemic/ai-adf-edi-spec:environment:prod`
      - Audience: `api://AzureADTokenExchange`
 
-2. **GitHub Secrets** (Repository-level)
-   ```
+1. **GitHub Secrets** (Repository-level)
+
+  ```text
    AZURE_CLIENT_ID           # Application (client) ID
    AZURE_TENANT_ID           # Directory (tenant) ID
    AZURE_SUBSCRIPTION_ID     # Subscription ID
    ```
 
-3. **GitHub Environments** (with protection rules)
+1. **GitHub Environments** (with protection rules)
    - `dev` - Auto-deploy on main branch
    - `test` - Manual approval (1 reviewer)
    - `prod` - Manual approval (2 reviewers, security team)
@@ -150,6 +152,7 @@ graph LR
 ### Detailed Stage Breakdown
 
 **1. Pull Request Validation** (`infra-ci.yml`)
+
 - Checkout repository
 - Azure CLI setup
 - Bicep build & lint (fail on warnings)
@@ -161,6 +164,7 @@ graph LR
 - Upload build artifacts (compiled ARM JSON)
 
 **2. Dev Environment Deployment** (triggered on merge to `main`)
+
 - Download build artifact
 - Azure login (dev environment)
 - `az deployment group create` with dev parameters
@@ -173,6 +177,7 @@ graph LR
 - Upload deployment manifest (resource IDs, outputs)
 
 **3. Integration Tests** (post-dev deployment)
+
 - Generate synthetic EDI file
 - Upload via SFTP (test partner account)
 - Poll for file in raw zone (timeout 5 min)
@@ -180,6 +185,7 @@ graph LR
 - Check metadata in Log Analytics
 
 **4. Test Environment Deployment** (manual approval required)
+
 - GitHub Environment protection: 1 approver from data-engineering team
 - Reuse compiled artifact from dev
 - `az deployment group what-if` (post as deployment comment)
@@ -187,6 +193,7 @@ graph LR
 - Run integration tests
 
 **5. Production Deployment** (manual approval required)
+
 - GitHub Environment protection: 2 approvers (security + platform lead)
 - Change management ticket required (validated via API or manual)
 - `az deployment group what-if` with annotation

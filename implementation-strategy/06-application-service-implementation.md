@@ -1,10 +1,13 @@
 # 06 - Application Service Implementation Prompt
 
 ---
+
 ## Prompt
+
 You are guiding implementation of application-layer services: routing functions, outbound assembly orchestrator, partner portal backend (API), control number management, error handling flows.
 
 ### Context Inputs
+
 - Architecture overview: `docs/01-architecture-spec.md`
 - Routing & outbound architecture: `docs/08-transaction-routing-outbound-spec.md`
 - Control number store specification: `docs/08-transaction-routing-outbound-spec.md` §14
@@ -13,6 +16,7 @@ You are guiding implementation of application-layer services: routing functions,
 - Tagging & governance reference: `docs/09-tagging-governance-spec.md`
 
 ### Objectives
+
 1. Define service responsibilities & boundaries referencing architecture & sequence diagrams
 2. Propose high-level component design (modules, layers, key classes/functions) per service
 3. Specify interface contracts (message schemas, DTOs, queue/topic contracts, REST endpoints) referencing `api/partner-portal/openapi.v1.yaml`
@@ -25,12 +29,14 @@ You are guiding implementation of application-layer services: routing functions,
 10. Include sample skeleton code snippets (language-agnostic or pseudo) for critical functions
 
 ### Constraints
+
 - Functions should be stateless; state externalized
 - No direct secrets in code; use references
 - All external I/O wrapped with resilience (timeouts, retries, circuit breakers where appropriate)
 - Logging must include correlation identifiers
 
 ### Required Output Sections
+
 1. Service Responsibility Matrix
 2. Component Designs
 3. Interface Contracts Summary
@@ -45,6 +51,7 @@ You are guiding implementation of application-layer services: routing functions,
 12. Open Questions
 
 ### Acceptance Criteria
+
 - Every service has at least one clear responsibility & non-responsibility statement
 - Error taxonomy covers validation, transient, partner, internal, security categories
 - Control number logic addresses gaps, retries, monotonicity, optimistic concurrency (Azure SQL store)
@@ -54,11 +61,14 @@ You are guiding implementation of application-layer services: routing functions,
   - **Destination Systems (external)**: Eligibility Service, Claims Processing, Enrollment Management, Remittance (these subscribe to routing topic and implement their own architecture patterns independently)
 
 ### Variable Placeholders
-- DEFAULT_TTL_MINUTES = <number>
-- MAX_RETRY_ATTEMPTS = <number>
+
+- DEFAULT_TTL_MINUTES = `<number>`
+- MAX_RETRY_ATTEMPTS = `<number>`
 
 Return only the structured output sections.
 
 ---
+
 ## Usage
+
 Use once infrastructure deployment patterns are stable. Provide placeholders, run with AI assistant.

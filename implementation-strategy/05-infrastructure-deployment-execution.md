@@ -1,16 +1,20 @@
 # 05 - Infrastructure Deployment Execution Prompt
 
 ---
+
 ## Prompt
+
 You are orchestrating first-time and repeatable environment deployments using Bicep modules defined in prior planning. Focus on reliability, idempotency, traceability.
 
 ### Context Inputs
+
 - IaC strategy: `docs/04-iac-strategy-spec.md`
 - GitHub Actions implementation: `docs/04a-github-actions-implementation.md`
 - SDLC & DevOps practices: `docs/05-sdlc-devops-spec.md`
 - Tagging & governance reference: `docs/09-tagging-governance-spec.md`
 
 ### Objectives
+
 1. Produce deployment runbook (phases, pre-checks, post-validation)
 2. Define parameter files strategy per environment & secret resolution mechanics
 3. Provide deployment scripts outline (PowerShell & Bash) including What-If usage
@@ -23,12 +27,14 @@ You are orchestrating first-time and repeatable environment deployments using Bi
 10. Capture deployment telemetry (where & how logged)
 
 ### Constraints
+
 - All deployments must be idempotent; subsequent run yields no changes
 - Use `az deployment sub|group what-if` prior to actual apply
 - Secrets never written to logs
 - Scripts exit non-zero on any failed validation
 
 ### Required Output Sections
+
 1. Deployment Runbook Overview
 2. Parameter & Secret Management Strategy
 3. Script Structure (PowerShell & Bash)
@@ -41,19 +47,23 @@ You are orchestrating first-time and repeatable environment deployments using Bi
 10. Open Questions
 
 ### Acceptance Criteria
+
 - Pre-flight list includes policy & RBAC validation
 - Verification matrix covers all critical services
 - Rollback differentiates between destructive & non-destructive paths
 - Script structure shows modular functions / tasks
 
 ### Variable Placeholders
-- ENV = <environment>
-- SUBSCRIPTION_ID = <guid>
-- DEPLOYMENT_TAG = <semantic version or timestamp>
-- PARAM_FILE = <path to bicep parameter json>
+
+- ENV = `<environment>`
+- SUBSCRIPTION_ID = `<guid>`
+- DEPLOYMENT_TAG = `<semantic version or timestamp>`
+- PARAM_FILE = `<path to bicep parameter json>`
 
 Return only the structured output sections.
 
 ---
+
 ## Usage
+
 Run after infrastructure plan is validated & modules ready. Provide placeholders and execute through AI.

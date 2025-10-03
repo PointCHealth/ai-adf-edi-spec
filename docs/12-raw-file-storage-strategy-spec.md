@@ -4,6 +4,7 @@
 **Date:** October 2, 2025  
 **Status:** Recommended Architecture  
 **Related Documents:**
+
 - [11-event-sourcing-architecture-spec.md](./11-event-sourcing-architecture-spec.md)
 - [01-architecture-spec.md](./01-architecture-spec.md)
 - [06-operations-spec.md](./06-operations-spec.md)
@@ -60,7 +61,7 @@ CREATE TABLE [dbo].[TransactionBatch] (
 
 ### Storage Tier Strategy
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                     FILE LIFECYCLE MANAGEMENT                    │
 ├─────────────┬──────────────┬─────────────┬──────────────────────┤
@@ -92,7 +93,7 @@ CREATE TABLE [dbo].[TransactionBatch] (
 | Blob Archive | $0.002 | $2 | $20 | $1,200 |
 | **Hybrid (Recommended)** | **Variable** | **~$12** | **~$120** | **~$7,200** |
 
-**Projected Savings: 85-90% reduction in storage costs**
+#### Projected Savings: 85-90% reduction in storage costs
 
 ---
 
@@ -155,7 +156,7 @@ GO
 
 ### 2. Azure Blob Storage Structure
 
-```
+```text
 Storage Account: edistg{env}{region}01
 ├── Container: edi-834-raw-files
 │   ├── Lifecycle Policy: Auto-tier by age
@@ -835,6 +836,7 @@ TransactionBatchTable
 ### 5-Year TCO Comparison
 
 **Assumptions:**
+
 - 500 EDI files per day
 - Average file size: 500 KB
 - Growth rate: 10% annually
@@ -871,17 +873,20 @@ TransactionBatchTable
 
 ### Recovery Scenarios
 
-**Scenario 1: Accidental Blob Deletion**
+#### Scenario 1: Accidental Blob Deletion
+
 - **Detection**: Blob soft delete (30 days)
 - **Recovery**: Undelete via Azure Portal or PowerShell
 - **Time**: < 5 minutes
 
-**Scenario 2: Storage Account Corruption**
+#### Scenario 2: Storage Account Corruption
+
 - **Detection**: Health monitoring alerts
 - **Recovery**: GRS failover to secondary region
 - **Time**: < 1 hour
 
-**Scenario 3: Need to Replay Events from Archived Files**
+#### Scenario 3: Need to Replay Events from Archived Files
+
 - **Detection**: Operations request
 - **Recovery**: Rehydrate from Archive tier
 - **Time**: 1-15 hours (acceptable for this scenario)

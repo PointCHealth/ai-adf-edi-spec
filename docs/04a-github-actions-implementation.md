@@ -4,6 +4,7 @@
 **Last Updated:** October 2, 2025  
 **Status:** Implementation Guide  
 **Related Documents:**
+
 - [04-iac-strategy-spec.md](./04-iac-strategy-spec.md)
 - [05-sdlc-devops-spec.md](./05-sdlc-devops-spec.md)
 - [06-operations-spec.md](./06-operations-spec.md)
@@ -12,15 +13,15 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Repository Setup](#repository-setup)
-3. [Azure Authentication Configuration](#azure-authentication-configuration)
-4. [GitHub Environments](#github-environments)
-5. [Workflow Catalog](#workflow-catalog)
-6. [Reusable Components](#reusable-components)
-7. [Security & Compliance](#security-compliance)
-8. [Performance Optimization](#performance-optimization)
-9. [Troubleshooting Guide](#troubleshooting-guide)
+1. [Overview](#1-overview)
+2. [Repository Setup](#2-repository-setup)
+3. [Azure Authentication Configuration](#3-azure-authentication-configuration)
+4. [GitHub Environments](#4-github-environments)
+5. [Workflow Catalog](#5-workflow-catalog)
+6. [Reusable Components](#6-reusable-components)
+7. [Security & Compliance](#7-security--compliance)
+8. [Performance Optimization](#8-performance-optimization)
+9. [Troubleshooting Guide](#9-troubleshooting-guide)
 
 ---
 
@@ -68,7 +69,7 @@ graph TB
 
 ### 2.1 Required Repository Structure
 
-```
+```text
 ai-adf-edi-spec/
 ├── .github/
 │   ├── workflows/
@@ -109,6 +110,7 @@ ai-adf-edi-spec/
 Configure in **Settings → Branches → Branch protection rules**:
 
 **Rule: `main`**
+
 - ✅ Require a pull request before merging
   - Required approvals: 2
   - Dismiss stale reviews when new commits are pushed
@@ -125,6 +127,7 @@ Configure in **Settings → Branches → Branch protection rules**:
   - Only admins and CI service accounts
 
 **Rule: `hotfix/*`**
+
 - Similar to main but:
   - Required approvals: 1
   - Allow force pushes (for rebase)
@@ -134,7 +137,7 @@ Configure in **Settings → Branches → Branch protection rules**:
 
 Create `.github/CODEOWNERS`:
 
-```
+```text
 # Infrastructure & IaC
 /infra/                 @vincemic @platform-team
 /env/                   @vincemic @platform-team
@@ -159,7 +162,7 @@ Create `.github/CODEOWNERS`:
 
 ### 3.1 OpenID Connect (OIDC) Setup
 
-**Step 1: Create Azure AD App Registration (Per Environment)**
+#### Step 1: Create Azure AD App Registration (Per Environment)
 
 ```powershell
 # Login to Azure
@@ -204,7 +207,7 @@ Write-Host "AZURE_TENANT_ID: $(az account show --query tenantId -o tsv)"
 Write-Host "AZURE_SUBSCRIPTION_ID: $subscriptionId"
 ```
 
-**Step 2: Create Additional Federated Credentials**
+#### Step 2: Create Additional Federated Credentials
 
 For PR validation (without environment):
 
@@ -255,6 +258,7 @@ EOF
 **Minimal Privilege Alternative:**
 
 Instead of `Contributor`, use granular roles:
+
 - `Storage Blob Data Contributor`
 - `Data Factory Contributor`
 - `Service Bus Data Owner`
@@ -266,7 +270,8 @@ Instead of `Contributor`, use granular roles:
 Navigate to **Settings → Secrets and variables → Actions**:
 
 **Repository Secrets** (used by all workflows):
-```
+
+```text
 AZURE_CLIENT_ID          = <app-id-from-step-1>
 AZURE_TENANT_ID          = <tenant-id>
 AZURE_SUBSCRIPTION_ID    = <subscription-id>
@@ -275,20 +280,23 @@ AZURE_SUBSCRIPTION_ID    = <subscription-id>
 **Environment Secrets** (if using different apps per env):
 
 For `dev` environment:
-```
+
+```text
 AZURE_CLIENT_ID          = <dev-app-id>
 AZURE_SUBSCRIPTION_ID    = <dev-subscription-id>
 ```
 
 For `prod` environment:
-```
+
+```text
 AZURE_CLIENT_ID          = <prod-app-id>
 AZURE_SUBSCRIPTION_ID    = <prod-subscription-id>
 TEAMS_WEBHOOK_URL        = <teams-channel-webhook>
 ```
 
 **Repository Variables** (non-sensitive):
-```
+
+```text
 DEV_RESOURCE_GROUP       = rg-edi-dev-eastus2
 TEST_RESOURCE_GROUP      = rg-edi-test-eastus2
 PROD_RESOURCE_GROUP      = rg-edi-prod-eastus2
@@ -308,15 +316,18 @@ Navigate to **Settings → Environments** and create:
 **Deployment branches:** `main` only
 
 **Environment secrets:**
+
 - (Inherit from repository if using same app)
 
 **Environment variables:**
-```
+
+```text
 RESOURCE_GROUP           = rg-edi-dev-eastus2
 ENVIRONMENT              = dev
 ```
 
 **Protection rules:**
+
 - None (auto-deploy)
 
 #### Environment: `test`
@@ -324,9 +335,11 @@ ENVIRONMENT              = dev
 **Deployment branches:** `main` only
 
 **Environment secrets:**
+
 - (Environment-specific if needed)
 
 **Protection rules:**
+
 - ✅ Required reviewers: `@data-engineering-team` (1 approver)
 - ✅ Wait timer: 0 minutes
 - ⬜ Prevent administrators from bypassing
@@ -336,17 +349,20 @@ ENVIRONMENT              = dev
 **Deployment branches:** `main`, `hotfix/*`
 
 **Environment secrets:**
+
 - `AZURE_CLIENT_ID` (if separate app)
 - `TEAMS_WEBHOOK_URL`
 
 **Environment variables:**
-```
+
+```text
 RESOURCE_GROUP           = rg-edi-prod-eastus2
 ENVIRONMENT              = prod
 ENABLE_CHANGE_VALIDATION = true
 ```
 
 **Protection rules:**
+
 - ✅ Required reviewers: `@security-team`, `@platform-lead` (2 approvers)
 - ✅ Wait timer: 5 minutes (cooling-off period)
 - ✅ Prevent administrators from bypassing
@@ -584,7 +600,8 @@ jobs:
 
 **Purpose:** Deploy infrastructure to environments
 
-**Triggers:** 
+**Triggers:**
+
 - `push` to `main` (auto-deploy dev)
 - `workflow_dispatch` (manual for test/prod)
 
@@ -1046,7 +1063,8 @@ runs:
 
 **Built-in GitHub Secret Scanning:** Automatically enabled for public repos, enable for private:
 
-**Settings → Code security and analysis**
+Settings → Code security and analysis:
+
 - ✅ Secret scanning
 - ✅ Push protection
 
@@ -1102,6 +1120,7 @@ jobs:
 ### 8.1 Caching Strategies
 
 **Bicep Module Cache:**
+
 ```yaml
 - name: Cache Bicep Modules
   uses: actions/cache@v3
@@ -1111,6 +1130,7 @@ jobs:
 ```
 
 **Function Dependencies:**
+
 ```yaml
 - name: Cache NuGet Packages
   uses: actions/cache@v3
@@ -1144,11 +1164,13 @@ jobs:
 ### 8.4 Self-Hosted Runners (Optional)
 
 **When to use:**
+
 - High workflow volume (>2000 min/month)
 - Need for private network access (Azure private endpoints)
 - Custom hardware requirements
 
 **Setup:**
+
 ```powershell
 # On VM with network access to Azure
 mkdir actions-runner && cd actions-runner
@@ -1159,6 +1181,7 @@ Expand-Archive -Path actions-runner.zip -DestinationPath .
 ```
 
 **Label usage in workflow:**
+
 ```yaml
 runs-on: [self-hosted, windows, azure-network]
 ```
@@ -1183,7 +1206,8 @@ runs-on: [self-hosted, windows, azure-network]
 **Enable Debug Logging:**
 
 Add repository secrets:
-```
+
+```text
 ACTIONS_RUNNER_DEBUG = true
 ACTIONS_STEP_DEBUG = true
 ```
@@ -1229,7 +1253,7 @@ Check platform status: https://www.githubstatus.com/
 ---
 
 **Document Maintenance:**
+
 - Review quarterly or after major GitHub Actions platform updates
 - Update action versions semi-annually (Dependabot recommended)
 - Capture lessons learned from deployment incidents
-

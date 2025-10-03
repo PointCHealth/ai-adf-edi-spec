@@ -11,6 +11,7 @@
 **This specification describes the Enrollment Management System**, a downstream destination system that consumes 834 transaction routing messages from the core EDI Platform via Azure Service Bus. This is **not part of the core platform** described in docs 01-10.
 
 **Relationship to Core Platform:**
+
 - Core platform handles file ingestion, validation, raw storage, and routing (see doc 01, 08)
 - Enrollment Management subscribes to Service Bus topic `edi-routing` with filter `transactionSet = '834'`
 - Enrollment Management implements event sourcing internally as an architectural choice for its domain
@@ -21,23 +22,23 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture Principles](#architecture-principles)
-3. [Core Concepts](#core-concepts)
-4. [Data Model](#data-model)
-5. [Event Store Design](#event-store-design)
-6. [Projection Management](#projection-management)
-7. [Transaction Processing Flow](#transaction-processing-flow)
-8. [Reversal and Replay Mechanisms](#reversal-and-replay-mechanisms)
-9. [Event Types and Schema](#event-types-and-schema)
-10. [Consistency and Concurrency](#consistency-and-concurrency)
-11. [Snapshotting Strategy](#snapshotting-strategy)
-12. [Query Patterns](#query-patterns)
-13. [Performance Considerations](#performance-considerations)
-14. [Operational Procedures](#operational-procedures)
-15. [Migration Strategy](#migration-strategy)
-16. [Testing Strategy](#testing-strategy)
-17. [Monitoring and Observability](#monitoring-and-observability)
+1. [Overview](#1-overview)
+2. [Architecture Principles](#2-architecture-principles)
+3. [Core Concepts](#3-core-concepts)
+4. [Data Model](#4-data-model)
+5. [Event Store Design](#5-event-store-design)
+6. [Projection Management](#6-projection-management)
+7. [Transaction Processing Flow](#7-transaction-processing-flow)
+8. [Reversal and Replay Mechanisms](#8-reversal-and-replay-mechanisms)
+9. [Event Types and Schema](#9-event-types-and-schema)
+10. [Consistency and Concurrency](#10-consistency-and-concurrency)
+11. [Snapshotting Strategy](#11-snapshotting-strategy)
+12. [Query Patterns](#12-query-patterns)
+13. [Performance Considerations](#13-performance-considerations)
+14. [Operational Procedures](#14-operational-procedures)
+15. [Migration Strategy](#15-migration-strategy)
+16. [Testing Strategy](#16-testing-strategy)
+17. [Monitoring and Observability](#17-monitoring-and-observability)
 
 ---
 
@@ -56,6 +57,7 @@ This document specifies the event sourcing architecture for the EDI 834 Benefit 
 ### 1.2 Scope
 
 This specification covers:
+
 - Event store design and implementation
 - Projection (read model) management
 - Transaction batch processing lifecycle
@@ -90,7 +92,7 @@ This specification covers:
 
 The system implements Command Query Responsibility Segregation (CQRS):
 
-```
+```text
 ┌─────────────┐
 │  EDI File   │
 └──────┬──────┘
@@ -138,6 +140,7 @@ An **aggregate** is a cluster of domain objects treated as a single unit. In our
 - **Coverage**: Health benefit coverage
 
 Each aggregate has:
+
 - **Aggregate Type**: Category (Member, Enrollment, Coverage)
 - **Aggregate ID**: Business key (SubscriberID, EnrollmentBusinessKey, etc.)
 - **Event Stream**: Ordered sequence of events for that aggregate
@@ -145,12 +148,14 @@ Each aggregate has:
 ### 3.2 Event
 
 An **event** represents something that happened in the past. Events are:
+
 - **Immutable**: Never changed after creation
 - **Ordered**: Globally sequenced
 - **Versioned**: Support schema evolution
 - **Self-describing**: Contain all necessary data
 
 Event anatomy:
+
 ```json
 {
   "EventID": 12345,
@@ -179,12 +184,14 @@ Event anatomy:
 ### 3.3 Projection (Read Model)
 
 A **projection** is a materialized view built from events:
+
 - Optimized for query performance
 - Eventually consistent with event store
 - Can be rebuilt from events
 - Multiple projections can exist for same events
 
 Examples:
+
 - `Member` table: Current member information
 - `Enrollment` table: Current enrollment status
 - `MemberCoverage` table: Current coverage details
@@ -192,6 +199,7 @@ Examples:
 ### 3.4 Transaction Batch
 
 A **transaction batch** represents a single EDI 834 file:
+
 - Contains multiple transaction sets
 - Atomic processing unit
 - Can be reversed as a unit
@@ -200,6 +208,7 @@ A **transaction batch** represents a single EDI 834 file:
 ### 3.5 Event Sequence
 
 A **global sequence number** that orders all events:
+
 - Monotonically increasing
 - Gap-free
 - Enables deterministic replay
@@ -247,6 +256,7 @@ Represents the EDI file level.
 | CreatedDate | DATETIME2 | Record creation |
 
 **Indexes:**
+
 - IX_TransactionBatch_ICN (InterchangeControlNumber)
 - IX_TransactionBatch_GUID (BatchGUID) UNIQUE
 - IX_TransactionBatch_Hash (FileHash)
@@ -274,6 +284,7 @@ The event store - source of truth.
 | ReversesEventID | BIGINT | Original event reversed |
 
 **Indexes:**
+
 - IX_DomainEvent_Aggregate (AggregateType, AggregateID, EventSequence)
 - IX_DomainEvent_Batch (TransactionBatchID, EventSequence)
 - IX_DomainEvent_Sequence (EventSequence) UNIQUE
@@ -298,6 +309,7 @@ Current state materialized from events.
 | CreatedDate, ModifiedDate | DATETIME2 | Timestamps |
 
 **Indexes:**
+
 - IX_Member_SubscriberID (SubscriberID) UNIQUE
 - IX_Member_LastEvent (LastEventSequence)
 
@@ -317,6 +329,7 @@ Tracks batch lifecycle.
 | EventsGenerated | INT | Number of events |
 
 **Status Values:**
+
 - `Received`: File uploaded
 - `Validated`: Schema validation passed
 - `Applied`: Events generated and projections updated
@@ -349,6 +362,7 @@ INCREMENT BY 1;
 ```
 
 **Key Properties:**
+
 - Guaranteed monotonic increase
 - No gaps (unlike IDENTITY with rollbacks)
 - Transaction-safe
@@ -357,11 +371,13 @@ INCREMENT BY 1;
 ### 5.3 Event Immutability Enforcement
 
 **Database Level:**
+
 - No UPDATE or DELETE permissions on DomainEvent
 - Application accounts have INSERT-only access
 - Reversal achieved through new events, not deletion
 
 **Application Level:**
+
 - Event objects are immutable value types
 - Validation on append, not modification
 - Reversal events explicitly marked
@@ -392,6 +408,7 @@ Events use JSON for flexibility and schema evolution:
 ```
 
 **Schema Evolution:**
+
 - Version field enables multiple schemas
 - New projections can handle all versions
 - Old events never rewritten
@@ -404,7 +421,7 @@ Events use JSON for flexibility and schema evolution:
 
 Projections are updated through event handlers:
 
-```
+```text
 Event Appended → Event Handler → Update Projection
 ```
 
@@ -433,6 +450,7 @@ WHERE MemberID = @MemberID;
 ```
 
 **Benefits:**
+
 - Detect stale projections
 - Incremental updates (only new events)
 - Parallel projection updates
@@ -454,6 +472,7 @@ SELECT * FROM vw_ProjectionHealth;
 ```
 
 **Use Cases:**
+
 - Bug fixes in projection logic
 - Schema changes
 - New projection creation
@@ -504,12 +523,14 @@ sequenceDiagram
 
 For each member in the 834 file:
 
-**Step 1: Parse Transaction**
+#### Step 1: Parse Transaction
+
 - Extract INS, REF, NM1, DMG, HD segments
 - Build domain objects
 
-**Step 2: Determine Event Type**
-```
+#### Step 2: Determine Event Type
+
+```text
 MaintenanceTypeCode:
   021 (Add) → MemberCreated + EnrollmentAdded + CoverageAdded
   001 (Change) → MemberUpdated + EnrollmentChanged + CoverageChanged
@@ -517,7 +538,8 @@ MaintenanceTypeCode:
   025 (Reinstate) → EnrollmentReinstated + CoverageReinstated
 ```
 
-**Step 3: Append Events**
+#### Step 3: Append Events
+
 ```sql
 EXEC usp_AppendEvent
     @TransactionBatchID = @BatchID,
@@ -528,7 +550,8 @@ EXEC usp_AppendEvent
     @EventMetadata = @JsonMetadata;
 ```
 
-**Step 4: Update Projections**
+#### Step 4: Update Projections
+
 - Apply events to Member, Enrollment, MemberCoverage tables
 - Update Version and LastEventSequence
 
@@ -550,6 +573,7 @@ END
 ```
 
 **Idempotency Guarantees:**
+
 - Same file produces same EventIDs (deterministic)
 - Duplicate detection at batch level
 - Event replay produces same projections
@@ -577,7 +601,8 @@ EXEC usp_ReverseBatch
 5. **Update Batch State**: Mark as 'Reversed'
 
 **Example:**
-```
+
+```text
 Original: MemberCreated (EventID: 100)
 Reversal: MemberCreatedReversed (EventID: 200, ReversesEventID: 100)
 
@@ -642,6 +667,7 @@ ORDER BY EventSequence;
 ### 9.1 Member Events
 
 #### MemberCreated (v1)
+
 ```json
 {
   "EventType": "MemberCreated",
@@ -661,6 +687,7 @@ ORDER BY EventSequence;
 ```
 
 #### MemberUpdated (v1)
+
 ```json
 {
   "EventType": "MemberUpdated",
@@ -677,6 +704,7 @@ ORDER BY EventSequence;
 ```
 
 #### MemberDeactivated (v1)
+
 ```json
 {
   "EventType": "MemberDeactivated",
@@ -692,6 +720,7 @@ ORDER BY EventSequence;
 ### 9.2 Enrollment Events
 
 #### EnrollmentAdded (v1)
+
 ```json
 {
   "EventType": "EnrollmentAdded",
@@ -708,6 +737,7 @@ ORDER BY EventSequence;
 ```
 
 #### EnrollmentTerminated (v1)
+
 ```json
 {
   "EventType": "EnrollmentTerminated",
@@ -723,6 +753,7 @@ ORDER BY EventSequence;
 ### 9.3 Coverage Events
 
 #### CoverageAdded (v1)
+
 ```json
 {
   "EventType": "CoverageAdded",
@@ -739,6 +770,7 @@ ORDER BY EventSequence;
 ```
 
 #### CoverageChanged (v1)
+
 ```json
 {
   "EventType": "CoverageChanged",
@@ -761,11 +793,13 @@ ORDER BY EventSequence;
 ### 10.1 Consistency Model
 
 **Event Store:**
+
 - **Strong Consistency**: Events written in transactions
 - **ACID Guarantees**: SQL Server transaction isolation
 - **Serializable**: Event sequence generation is serialized
 
 **Projections:**
+
 - **Eventual Consistency**: May lag behind events
 - **Read-Your-Writes**: Can be guaranteed per session
 - **Monotonic Reads**: LastEventSequence ensures forward progress
@@ -790,6 +824,7 @@ IF @@ROWCOUNT = 0
 ### 10.3 Transaction Boundaries
 
 **Write Operations:**
+
 ```sql
 BEGIN TRANSACTION;
     -- Append event
@@ -804,6 +839,7 @@ COMMIT TRANSACTION;
 ```
 
 **Isolation Level:** `READ_COMMITTED_SNAPSHOT`
+
 - Non-blocking reads
 - Writers don't block readers
 - Consistent snapshots
@@ -835,6 +871,7 @@ WHERE Version % 100 = 0; -- Snapshot every 100 versions
 ```
 
 **Snapshot Frequency:**
+
 - **High-change aggregates**: Every 50-100 events
 - **Low-change aggregates**: Every 500-1000 events
 - **Large aggregates**: More frequent snapshots
@@ -862,6 +899,7 @@ FROM Member;
 ```
 
 **Use Cases:**
+
 - Fast rollback to pre-batch state
 - Validation of batch effects
 - Compliance checkpoints
@@ -972,6 +1010,7 @@ ORDER BY EventSequence;
 ### 13.1 Write Performance
 
 **Event Append:**
+
 - Target: 1,000+ events/second
 - Optimizations:
   - Bulk insert for batch processing
@@ -979,6 +1018,7 @@ ORDER BY EventSequence;
   - Minimal indexes on event store
 
 **Batch Processing:**
+
 - Target: Process 10,000 member file in <5 minutes
 - Optimizations:
   - Parallel event generation
@@ -988,6 +1028,7 @@ ORDER BY EventSequence;
 ### 13.2 Read Performance
 
 **Projection Queries:**
+
 - Target: <50ms for single record
 - Optimizations:
   - Covering indexes
@@ -995,6 +1036,7 @@ ORDER BY EventSequence;
   - Read replicas for analytics
 
 **Event History:**
+
 - Target: <500ms for member history
 - Optimizations:
   - Aggregate-specific indexes
@@ -1004,11 +1046,13 @@ ORDER BY EventSequence;
 ### 13.3 Storage Optimization
 
 **Event Store:**
+
 - JSON compression: ~40% reduction
 - Columnstore for old events
 - Archive to blob storage after 1 year
 
 **Projections:**
+
 - Standard indexing
 - Statistics maintenance
 - Partition large tables
@@ -1016,11 +1060,13 @@ ORDER BY EventSequence;
 ### 13.4 Scalability
 
 **Horizontal Scaling:**
+
 - Read replicas for projections
 - Event store sharding by aggregate type
 - Async event handlers in separate services
 
 **Vertical Scaling:**
+
 - Premium/Business Critical tier for event store
 - Separate database for projections
 - In-memory tables for hot projections
@@ -1032,6 +1078,7 @@ ORDER BY EventSequence;
 ### 14.1 File Processing
 
 **Standard Flow:**
+
 ```powershell
 # 1. Upload file
 POST /api/enrollment/files
@@ -1047,12 +1094,14 @@ GET /api/enrollment/batches/{batchId}/summary
 ### 14.2 Batch Reversal
 
 **When to Reverse:**
+
 - Duplicate file detected
 - Data quality issues
 - Partner request
 - Processing error
 
 **Reversal Procedure:**
+
 ```sql
 -- 1. Verify batch can be reversed
 SELECT * 
@@ -1078,12 +1127,14 @@ EXEC usp_ReplayEvents;
 ### 14.3 Projection Rebuild
 
 **When to Rebuild:**
+
 - Projection bug fix
 - Schema change
 - Data corruption
 - New projection creation
 
 **Rebuild Procedure:**
+
 ```sql
 -- 1. Backup projection
 SELECT * INTO Member_Backup FROM Member;
@@ -1107,6 +1158,7 @@ WHERE m.MemberID IS NULL OR mb.MemberID IS NULL;
 ### 14.4 Event Store Maintenance
 
 **Archive Old Events:**
+
 ```sql
 -- Archive events older than 7 years
 INSERT INTO ArchiveDB.dbo.DomainEvent
@@ -1119,6 +1171,7 @@ WHERE EventTimestamp < DATEADD(YEAR, -7, GETDATE());
 ```
 
 **Snapshot Cleanup:**
+
 ```sql
 -- Keep last 10 snapshots per aggregate
 WITH RankedSnapshots AS (
@@ -1138,25 +1191,29 @@ DELETE FROM RankedSnapshots WHERE rn > 10;
 
 ### 15.1 Migration from CRUD System
 
-**Phase 1: Parallel Write (Weeks 1-4)**
+#### Phase 1: Parallel Write (Weeks 1-4)
+
 - Write to both old and new systems
 - Validate event generation
 - Build projections from events
 - Compare results
 
-**Phase 2: Event Sourcing Primary (Weeks 5-8)**
+#### Phase 2: Event Sourcing Primary (Weeks 5-8)
+
 - Read from projections
 - Write through event store
 - Keep old system in sync
 - Monitor performance
 
-**Phase 3: Cutover (Week 9)**
+#### Phase 3: Cutover (Week 9)
+
 - Stop writing to old system
 - Full event sourcing operation
 - Old system read-only
 - Backfill historical events
 
-**Phase 4: Decommission (Week 10+)**
+#### Phase 4: Decommission (Week 10+)
+
 - Remove old system
 - Archive historical data
 - Complete migration
@@ -1195,6 +1252,7 @@ ORDER BY CreatedDate;
 ### 16.1 Unit Tests
 
 **Event Handlers:**
+
 ```csharp
 [Test]
 public void MemberCreated_ShouldCreateMemberProjection()
@@ -1210,6 +1268,7 @@ public void MemberCreated_ShouldCreateMemberProjection()
 ```
 
 **Reversal Logic:**
+
 ```csharp
 [Test]
 public void ReverseBatch_ShouldCreateReversalEvents()
@@ -1229,6 +1288,7 @@ public void ReverseBatch_ShouldCreateReversalEvents()
 ### 16.2 Integration Tests
 
 **End-to-End Processing:**
+
 ```csharp
 [Test]
 public async Task ProcessFile_ShouldGenerateEventsAndUpdateProjections()
@@ -1253,6 +1313,7 @@ public async Task ProcessFile_ShouldGenerateEventsAndUpdateProjections()
 ### 16.3 Property-Based Tests
 
 **Idempotency:**
+
 ```csharp
 [Property]
 public bool ProcessingSameFileTwice_ProducesIdenticalResults(
@@ -1267,6 +1328,7 @@ public bool ProcessingSameFileTwice_ProducesIdenticalResults(
 ```
 
 **Replay Determinism:**
+
 ```csharp
 [Property]
 public bool ReplayingEvents_ProducesSameProjection(
@@ -1287,18 +1349,21 @@ public bool ReplayingEvents_ProducesSameProjection(
 ### 17.1 Key Metrics
 
 **Event Store:**
+
 - Events/second append rate
 - Event store size growth
 - Sequence generation latency
 - Event handler latency
 
 **Projections:**
+
 - Projection lag (events behind)
 - Projection rebuild time
 - Query response time
 - Stale projection count
 
 **Batch Processing:**
+
 - Files processed/hour
 - Average batch processing time
 - Batch failure rate
@@ -1307,6 +1372,7 @@ public bool ReplayingEvents_ProducesSameProjection(
 ### 17.2 KQL Queries (Application Insights)
 
 **Event Append Rate:**
+
 ```kql
 customMetrics
 | where name == "EventAppendRate"
@@ -1315,6 +1381,7 @@ customMetrics
 ```
 
 **Projection Lag:**
+
 ```kql
 customMetrics
 | where name == "ProjectionLag"
@@ -1324,6 +1391,7 @@ customMetrics
 ```
 
 **Batch Processing Duration:**
+
 ```kql
 dependencies
 | where name == "ProcessBatch"
@@ -1334,11 +1402,13 @@ dependencies
 ### 17.3 Alerts
 
 **Critical:**
+
 - Projection lag > 1000 events
 - Event append failures
 - Batch processing failures
 
 **Warning:**
+
 - Projection lag > 100 events
 - Slow event handlers (>500ms)
 - High reversal rate (>5%)
@@ -1346,12 +1416,14 @@ dependencies
 ### 17.4 Dashboards
 
 **Operations Dashboard:**
+
 - Events processed today
 - Active batches
 - Projection health
 - Error rate
 
 **Performance Dashboard:**
+
 - Event throughput
 - Projection lag
 - Query latency (P95, P99)
@@ -1410,6 +1482,7 @@ dependencies
 ---
 
 **Related Documents:**
+
 - [01-architecture-spec.md](./01-architecture-spec.md)
 - [02-data-flow-spec.md](./02-data-flow-spec.md)
 - [06-operations-spec.md](./06-operations-spec.md)

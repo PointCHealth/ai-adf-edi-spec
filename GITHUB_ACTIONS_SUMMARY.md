@@ -34,6 +34,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
     - Post-deployment validation and notifications
 
 **Key Additions:**
+
 - OIDC federated credential setup vs. service principal secrets
 - GitHub Environments with protection rules
 - Artifact management patterns
@@ -72,6 +73,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
   - Post-deployment validation
 
 **Key Additions:**
+
 - Full YAML workflow implementations (copy-paste ready)
 - Permissions configuration for OIDC
 - Job dependencies and conditional execution
@@ -110,6 +112,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
     - Credential compromise response plan
 
 **Key Additions:**
+
 - Operational runbooks specific to GitHub Actions
 - Cost monitoring and optimization
 - Security incident procedures
@@ -136,6 +139,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 9. **Troubleshooting Guide** - Common issues, debug techniques, status checks
 
 **Key Features:
+
 - **Production-ready workflows** - Copy-paste YAML with minimal customization
 - **OIDC authentication** - Complete setup scripts for Azure AD
 - **Security scanning** - Integrated PSRule, Checkov, CodeQL
@@ -148,6 +152,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ### 5. **docs/01-architecture-spec.md** (Minor Update)
 
 **Added:**
+
 - Cross-reference to GitHub Actions implementation guide at top of document
 
 ---
@@ -155,6 +160,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ### 6. **README.md** (Updated)
 
 **Added:**
+
 - New entry in Document Index for `04a-github-actions-implementation.md`
 - Highlighted as key implementation reference
 
@@ -163,6 +169,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ## Key Capabilities Enabled
 
 ### Authentication & Security
+
 ✅ **OpenID Connect (OIDC)** - Passwordless authentication  
 ✅ **Federated Credentials** - Per-environment or per-branch trust  
 ✅ **Environment Secrets** - Scoped with approval gates  
@@ -170,6 +177,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ✅ **SARIF Integration** - Security findings in GitHub Security tab  
 
 ### CI/CD Pipeline Features
+
 ✅ **PR Validation** - Automated what-if with inline comments  
 ✅ **Multi-Environment CD** - Dev → Test → Prod promotion  
 ✅ **Manual Approvals** - Required reviewers with cooling-off periods  
@@ -177,6 +185,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ✅ **Rollback Support** - Redeploy previous commit/tag  
 
 ### Operational Excellence
+
 ✅ **Monitoring Dashboards** - Workflow success rates, duration tracking  
 ✅ **Cost Optimization** - Caching, artifact retention, runner strategies  
 ✅ **Failure Playbooks** - Documented response procedures  
@@ -184,6 +193,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ✅ **Notification Integration** - Teams webhooks for prod deployments  
 
 ### Developer Experience
+
 ✅ **Composite Actions** - Reusable workflow components  
 ✅ **Matrix Strategies** - Parallel function builds  
 ✅ **Local Testing** - Using `act` CLI  
@@ -300,6 +310,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ## Best Practices Codified
 
 ### Workflow Design
+
 - ✅ Separate CI (validation) from CD (deployment)
 - ✅ Use composite actions for repeated logic
 - ✅ Implement concurrency controls per environment
@@ -307,6 +318,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 - ✅ Fail fast with clear error messages
 
 ### Security
+
 - ✅ OIDC over service principal secrets
 - ✅ Environment-scoped secrets (not repository-wide for prod)
 - ✅ Required reviewers with no administrator bypass
@@ -314,6 +326,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 - ✅ Secret scanning with push protection
 
 ### Operations
+
 - ✅ Monitor workflow success rates daily
 - ✅ Schedule drift detection nightly
 - ✅ Document rollback procedures
@@ -321,6 +334,7 @@ This document summarizes the GitHub Actions-specific content added to the Health
 - ✅ Use GitHub CLI for operational queries
 
 ### Developer Experience
+
 - ✅ Post what-if results to PR comments
 - ✅ Job summaries with markdown formatting
 - ✅ Clear naming conventions for workflows and jobs
@@ -332,18 +346,21 @@ This document summarizes the GitHub Actions-specific content added to the Health
 ## Maintenance Notes
 
 ### Quarterly Reviews
+
 - Update action versions (e.g., `azure/login@v2`)
 - Review GitHub Actions feature releases
 - Validate federated credentials still active
 - Audit unused secrets
 
 ### Semi-Annual
+
 - Review workflow success rate trends
 - Optimize long-running workflows
 - Update composite actions
 - Refresh cost optimization strategies
 
 ### Ad-Hoc
+
 - After Azure platform changes (new CLI features)
 - When GitHub Actions introduces new capabilities
 - Post-incident reviews of workflow failures
@@ -374,8 +391,8 @@ The GitHub Actions implementation is **production-ready** with:
 - ✅ Cost optimization strategies
 
 **Next Steps:
+
 1. Review implementation guide: `docs/04a-github-actions-implementation.md`
 2. Execute Azure AD setup scripts
 3. Configure GitHub repository per §2
 4. Deploy and test workflows incrementally (CI → Dev → Test → Prod)
-

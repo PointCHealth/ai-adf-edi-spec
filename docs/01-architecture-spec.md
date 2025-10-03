@@ -3,9 +3,11 @@
 > **Note:** For GitHub Actions CI/CD implementation details, see [04a-github-actions-implementation.md](./04a-github-actions-implementation.md)
 
 ## 1. Overview / Executive Summary
+
 This document defines the target architecture for ingesting healthcare EDI (e.g., X12 270/271, 276/277, 278, 834, 835, 837, custom CSV/JSON companion outputs) files delivered by external trading partners via SFTP, landing them securely in Azure, and persisting canonical copies plus enriched metadata into an Azure Data Lake for downstream analytics, compliance retention, and operational reporting. The solution emphasizes HIPAA compliance, least‑privilege security, automation, observability, repeatability (Infrastructure as Code), and a governed SDLC.
 
 ## 2. Business Goals & Success Criteria
+
 - Reliable near–real‑time ingestion of partner EDI payloads (target under 5 minutes from arrival to raw zone persistence)
 - Immutable retention of original (“as received”) artifacts for compliance & dispute resolution (WORM optional per policy)
 - Standardized metadata for lineage, partner attribution, transaction set, file integrity, timestamps
@@ -16,6 +18,7 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Deterministic Scheduled Workloads: governed automation for outbound and reconciliation runs that cannot rely on partner events
 
 ## 3. In-Scope
+
 - Ingestion of EDI files via per‑partner SFTP user accounts (Managed SFTP on Storage / Azure SFTP pattern)
 - Routing to Azure Data Lake Storage Gen2 with multi‑zone layout (raw / curated / processed)
 - Metadata extraction (file, partner, transaction set, size, checksum, received timestamps, processing status)
@@ -26,12 +29,14 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Infrastructure as Code (Bicep) and CI/CD pipelines for promotion across dev/test/prod
 
 ## 4. Out-of-Scope (Phase 1)
+
 - Full semantic parsing / transformation of EDI into relational models (will be staged for downstream pipelines)
 - Real-time API-based ingestion (e.g., AS2, API gateway transactions)
 - Master data management or downstream analytics warehouse modeling
 - Data quality rule authoring beyond basic structural validation
 
 ## 5. Core Architectural Principles
+
 1. Zero Trust / Least Privilege – RBAC & ACL minimization, just-in-time elevation
 2. Separation of Concerns – Ingestion vs. enrichment vs. analytics tiers
 3. Idempotent & Replayable – Ability to reprocess from immutable raw store
@@ -42,6 +47,7 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 8. Metadata-Centric – All processing actions stamped & queryable
 
 ## 6. Target High-Level Architecture
+
 (See accompanying diagram – textual description below.)
 
 ![Architecture Overview](./diagrams/png/architecture-overview.png)
@@ -472,7 +478,7 @@ This matrix clarifies which architectural components handle each transaction typ
 
 #### B.4.1 837 Claim (Full Lifecycle Example)
 
-```
+```text
 1. Partner SFTP Upload (837 file)
    ↓
 2. Core Platform Ingestion (ADF)
@@ -506,7 +512,7 @@ This matrix clarifies which architectural components handle each transaction typ
 
 #### B.4.2 270/271 Eligibility (Fast Path Example)
 
-```
+```text
 1. Partner SFTP Upload (270 inquiry)
    ↓
 2. Core Platform Ingestion (ADF) - validate & persist
@@ -529,7 +535,7 @@ This matrix clarifies which architectural components handle each transaction typ
 
 #### B.4.3 834 Enrollment (Event Sourcing Example)
 
-```
+```text
 1. Partner SFTP Upload (834 batch)
    ↓
 2. Core Platform Ingestion - validate & persist raw
@@ -600,7 +606,7 @@ Use this matrix to assess blast radius when modifying components:
    - Redirect router Function config to secondary Service Bus namespace
    - Deploy ADF pipelines to secondary region via IaC
    - Update DNS / Front Door routing if applicable
-4. **Validation**: 
+4. **Validation**:
    - Run synthetic ingestion test file
    - Verify routing message delivery
    - Confirm control number integrity (run gap detection query)
@@ -634,11 +640,13 @@ Use this matrix to assess blast radius when modifying components:
 | **Observability** | Mature metrics | Mature metrics | Both |
 
 **Decision**: **Continue with Service Bus** for routing due to:
+
 - Ordering guarantees (critical for transactional sequences like 837 multi-ST)
 - Richer SQL filtering (complex partner/transaction rules)
 - Mature DLQ and retry policies (operational maturity)
 
 **Event Grid Use Cases** (where appropriate):
+
 - Blob storage events (already in use for ingestion trigger)
 - Lightweight fan-out for analytics/observability sinks (non-critical paths)
 

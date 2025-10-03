@@ -4,6 +4,7 @@
 **Last Updated:** October 3, 2025  
 **Status:** Draft (awaiting architecture review)  
 **Related Documents:**
+
 - [01-architecture-spec.md](./01-architecture-spec.md)
 - [02-data-flow-spec.md](./02-data-flow-spec.md)
 - [08-transaction-routing-outbound-spec.md](./08-transaction-routing-outbound-spec.md)
@@ -17,6 +18,7 @@
 Event-driven ingestion covers partner-delivered files, but several enterprise workflows must **proactively generate or refresh EDI transactions on a defined cadence** (e.g., nightly enrollment deltas, weekly 277CA compliance runs, month-end financial extracts). This specification defines the **Enterprise Scheduler** capability that complements the event triggers by offering deterministic, policy-aware scheduling of EDI generation jobs across internal and partner-facing systems.
 
 Goals:
+
 - Provide a governed, auditable scheduling layer for outbound and internally-sourced EDI transactions.
 - Ensure alignment with HIPAA, corporate change control, and operational resiliency requirements.
 - Reuse existing platform primitives (Azure Data Factory, Service Bus, Key Vault, Log Analytics) while minimizing bespoke infrastructure.
@@ -24,6 +26,7 @@ Goals:
 ## 2. Scope
 
 ### 2.1 In-Scope (Phase 1)
+
 - Time-based triggering of EDI generation pipelines (hourly, daily, weekly, monthly) including business calendars.
 - Configuration-driven schedule definitions stored alongside partner metadata (`config/schedules`).
 - Dependency chaining (e.g., run 834 snapshot after data warehouse refresh completes).
@@ -32,12 +35,14 @@ Goals:
 - Integration with outbound assembly and routing services via Service Bus topics/queues.
 
 ### 2.2 Out-of-Scope (Phase 1)
+
 - Real-time API-trigger scheduling (handled by existing event triggers).
 - Complex workload orchestration requiring more than 10 sequential dependencies (Phase 2: consider Azure Data Factory tumbling window or Azure Logic Apps).
 - Predictive scheduling or adaptive load balancing based on historical durations.
 - Partner portal self-service scheduling (manual change requests through operations in Phase 1).
 
 ## 3. Business Drivers
+
 - **Regulatory Reporting:** CMS, state, and payer contracts require periodic outbound 271/277/835 files independent of inbound activity.
 - **Operational SLAs:** Internal systems (claims adjudication, enrollment, finance) need deterministic delivery windows to align with batch jobs and staffing.
 - **Data Reconciliation:** Scheduled reconciliations (daily control number audits, duplicate detection sweeps) reduce disputes.
@@ -166,6 +171,7 @@ Sample schedule definition (`config/schedules/edi-outbound.json`):
 ```
 
 Key validation rules:
+
 - Cron syntax validated via schema + unit tests.
 - `calendar` must be defined in `config/schedules/calendars/*.json`.
 - Parameter templating limited to `${...}` tokens from allowed variables (scheduledDate, scheduledDateTime, environment).
@@ -192,6 +198,7 @@ Key validation rules:
 | Compliance | Audit schedule change history via Git commits and Log Analytics. | Semi-annual |
 
 Playbooks (appendix to [06-operations-spec.md](./06-operations-spec.md)):
+
 - `OP-SCH-001`: Responding to scheduler failure alerts.
 - `OP-SCH-002`: Performing manual `RunNow` execution.
 - `OP-SCH-003`: Applying emergency blackout window.
@@ -231,4 +238,4 @@ Playbooks (appendix to [06-operations-spec.md](./06-operations-spec.md)):
 
 ---
 
-_End of Document_
+End of Document

@@ -239,6 +239,7 @@ AckAssembly_CL
 ### 15.1 Workflow Monitoring
 
 **Daily Checklist:**
+
 - Review failed workflow runs in Actions tab
 - Check deployment queue for blocked environments
 - Verify scheduled workflows executed (drift detection, ADF export)
@@ -253,6 +254,7 @@ AckAssembly_CL
 | What-if execution time | < 5 min | > 10 min |
 
 **Access Workflow Logs:**
+
 ```powershell
 # Via GitHub CLI
 gh run list --workflow=infra-cd.yml --limit 20
@@ -313,13 +315,15 @@ gh workflow run infra-cd.yml \
 ### 15.4 GitHub Actions Cost Optimization
 
 **Strategies:**
+
 - Use artifact caching for dependencies (`actions/cache@v3`)
 - Conditional job execution (skip unnecessary environments)
 - Matrix strategy for parallel function builds
 - Self-hosted runners for high-volume workflows (consider cost vs. GitHub-hosted)
 - Retention policy: artifacts 30 days, logs 90 days
 
-**Monthly Cost Review:**
+#### Monthly Cost Review
+
 ```powershell
 # Estimate from workflow runs (manual calculation or API)
 gh api /repos/vincemic/ai-adf-edi-spec/actions/runs \
@@ -329,14 +333,16 @@ gh api /repos/vincemic/ai-adf-edi-spec/actions/runs \
 
 ### 15.5 Secrets & Credential Rotation
 
-**Federated Credential Rotation (Not Required - auto-rotates)**
+#### Federated Credential Rotation (Not Required - auto-rotates)
 
-**GitHub Secrets Audit:**
+#### GitHub Secrets Audit
+
 - Quarterly review of unused secrets
 - Validate OIDC app registrations still active
 - Test authentication in non-prod before prod rotation
 
 **Procedure if Credential Compromised:**
+
 1. Immediately delete federated credential in Azure AD
 2. Disable affected GitHub environment
 3. Create new app registration

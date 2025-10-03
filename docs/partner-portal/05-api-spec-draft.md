@@ -65,6 +65,7 @@ Define initial REST API surface (v1) for Partner Portal.
 ## 5. Data Models (Representative)
 
 ### UserSummary
+
 ```json
 {
   "id": "guid",
@@ -77,6 +78,7 @@ Define initial REST API surface (v1) for Partner Portal.
 ```
 
 ### PgpKey
+
 ```json
 {
   "id": "guid",
@@ -89,6 +91,7 @@ Define initial REST API surface (v1) for Partner Portal.
 ```
 
 ### FileStatus
+
 ```json
 {
   "fileName": "837_20250922_120000.txt",
@@ -103,6 +106,7 @@ Define initial REST API surface (v1) for Partner Portal.
 ```
 
 ### MetricsSummary
+
 ```json
 {
   "window": { "from": "2025-09-21T00:00:00Z", "to": "2025-09-22T00:00:00Z" },
@@ -113,6 +117,7 @@ Define initial REST API surface (v1) for Partner Portal.
 ```
 
 ### Error Envelope
+
 ```json
 {
   "traceId": "abcd-efgh",

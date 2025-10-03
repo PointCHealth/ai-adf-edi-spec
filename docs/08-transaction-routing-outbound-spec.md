@@ -354,6 +354,7 @@ When counter approaches `MaxValue`:
 1. **Warning Alert** at 90% threshold (e.g., 899,999,999 for 9-digit ISA13)
 2. **Coordination Window**: Schedule maintenance window with partners
 3. **Reset Procedure**:
+
    ```sql
    UPDATE [dbo].[ControlNumberCounters]
    SET CurrentValue = 1,
@@ -367,6 +368,7 @@ When counter approaches `MaxValue`:
    (CounterId, ControlNumberIssued, OutboundFileId, Status, Notes)
    VALUES (@CounterId, 1, NEWID(), 'RESET', 'Scheduled rollover maintenance');
    ```
+
 4. Document gap in audit trail; communicate to partners per SLA
 
 ### 14.7 Initialization & Partner Onboarding
@@ -543,7 +545,6 @@ ADF / Function deployment step compares desired rules vs. existing Service Bus s
 - Introduce event-sourced acknowledgment pipeline (each routing message completion posts minimal event; orchestrator reacts rather than polling).
 - Add FHIR companion response emit (parallel 271/277 FHIR resources) in Phase 2 parsing.
 - Automated anomaly detection (e.g., sudden spike in 999 rejects) via Log Analytics scheduled query + ML baseline.
-
 
 ### 15.1 Router Function (HTTP Trigger from ADF)
 

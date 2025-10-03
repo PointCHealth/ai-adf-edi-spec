@@ -20,15 +20,18 @@ Each numbered file can be used as a system / architect prompt to drive focused g
 ## How To Use
 
 For each phase:
+
 - Copy the prompt body into your AI assistant (or chain it with previous context)
 - Provide any variable values requested in the PLACEHOLDER sections
 - Iterate until the acceptance criteria in the prompt are satisfied
 
 ## Conventions
+
 - Prompts use MUST / SHOULD language to clarify required vs recommended outputs
 - All infrastructure artifacts should align with existing `infra/bicep/modules` where possible
 - Security controls map to the security & compliance spec in `docs/03-security-compliance-spec.md`
 - Observability queries must reference KQL samples under `queries/kusto`
 
 ## Extension
+
 Feel free to add additional numbered prompts (e.g. `11-advanced-partner-onboarding.md`) as scope evolves.

@@ -3,13 +3,17 @@
 This document distills the repository’s specifications into an AI-optimized knowledge base. It introduces the problem space, domain vocabulary, system architecture, major components, configuration surfaces, operational telemetry, security posture, and forward work so an autonomous assistant can reason about extensions, code generation, verification, or impact analysis.
 
 ---
+
 ## 1. Problem Domain & Business Goal
+
 Healthcare trading partners (clearinghouses, providers, payers) submit HIPAA X12 EDI transaction files (e.g., 837 claims) via SFTP. The platform ingests these files into an Azure landing zone, validates structure & interchange envelopes, enriches with metadata, routes messages for downstream processing, and manages acknowledgments / responses (TA1, 999, 277CA, others) while enforcing observability, governance, compliance, lineage, and SLA tracking.
 
 Key value: Standardized, event‑driven ingestion and routing with auditable control numbers, scalable monitoring, and strict least‑privilege security aligned to HIPAA.
 
 ---
+
 ## 2. Core Architectural Principles
+
 - Event-driven orchestration (avoid polling; rely on storage + Service Bus events)
 - Immutable raw data retention & deterministic lineage
 - Config-driven partner routing & rules (JSON + schema validation)
@@ -20,7 +24,9 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 - Progressive hardening: start with baseline; layer policies (tagging, encryption, logging) early
 
 ---
+
 ## 3. High-Level Component Inventory
+
 | Layer | Purpose | Representative Azure Services / Artifacts |
 |-------|---------|--------------------------------------------|
 | Ingestion & Landing | Receive partner SFTP drops into secure storage | SFTP (managed service or partner-managed) -> ADLS Gen2 (raw container) |
@@ -35,7 +41,9 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 | Infrastructure as Code | Reproducible environment provisioning | Bicep modules (`infra/bicep/modules/`) |
 
 ---
+
 ## 4. Data Flow (Simplified Narrative)
+
 1. Partner transfers X12 file to SFTP landing -> Ingested into ADLS raw folder (immutable).
 2. Storage event triggers ADF pipeline (or Function wrapper) for metadata extraction + initial validation.
 3. Validation results + interchange metadata are persisted into custom log tables (e.g., `InterchangeValidation_CL`).
@@ -45,8 +53,10 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 7. KQL dashboards compute latency percentiles, reject rates, gap detection, backlog health; alerts feed Ops runbooks.
 
 ---
+
 ## 5. Domain Vocabulary (Glossary for AI Reasoning)
-- X12: ANSI ASC X12 healthcare EDI standard (e.g., 837, 277CA). 
+
+- X12: ANSI ASC X12 healthcare EDI standard (e.g., 837, 277CA).
 - Interchange (ISA/IEA): Envelope wrapper; contains interchange control number (ICN).
 - Functional Group (GS/GE): Groups related transaction sets; group control number.
 - Transaction Set (ST/SE): Individual business document (e.g., claim batch) with control number.
@@ -60,7 +70,9 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 - Routing Rule: Declarative filter mapping metadata attributes (e.g., partnerId, transactionType) to a Service Bus subscription or handler.
 
 ---
+
 ## 6. Configuration Surfaces
+
 | File | Purpose | Notes |
 |------|---------|-------|
 | `config/partners/partners.schema.json` | JSON Schema for validating partner definitions | Enforces shape, required keys, enumerations |
@@ -71,18 +83,23 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 Validation Command (local): `npx ajv validate -s ./config/partners/partners.schema.json -d ./config/partners/partners.sample.json`
 
 ---
+
 ## 7. Infrastructure as Code (IaC) Strategy
+
 - Bicep modules exist (scaffolds) for: `servicebus.bicep`, `router-function.bicep`, `outbound-orchestrator.bicep`.
 - Expected future additions: Storage accounts (raw, curated, outbound), Log Analytics workspace, ADF factory, Key Vault, Policy assignments, Diagnostic settings, Private endpoints.
 - Deployment Pipeline (planned): Orchestrate module validation (what-if), security scanning, promotion Dev → NonProd → Prod, enforcing tagging and policy compliance.
 
 Design Tenets for AI:
+
 1. Keep modules atomic (single primary resource + outputs for composition).
 2. Derive naming from central prefix + environment + workload segment.
 3. Emit standardized tags (see Tagging Governance spec) from each module root.
 
 ---
+
 ## 8. Security & Compliance Highlights
+
 - Principle of Least Privilege: Managed Identities per Function, ADF, with minimal Data Lake & Service Bus rights.
 - Separation of data zones (raw immutable vs processed) to support audit & lineage.
 - Logging of validation and acknowledgments for forensic replay (immutability of source events).
@@ -90,12 +107,16 @@ Design Tenets for AI:
 - No PHI currently stored (spec-phase), but designed to ensure PHI handling via encryption & restricted access.
 
 ---
+
 ## 9. Observability & Metrics
+
 Custom log tables (illustrative names from KQL snippets):
+
 - `AckAssembly_CL` – Ack generation events & latency fields.
 - `InterchangeValidation_CL` – Interchange / envelope validation outcomes.
 
 Representative KQL (already in repo under `queries/kusto/`):
+
 - Latency distribution (`ack_latency.kql`)
 - 999 reject rate (`syntax_reject_rate_999.kql`)
 - TA1 failure rate (`ta1_failure_rate.kql`)
@@ -104,30 +125,38 @@ Representative KQL (already in repo under `queries/kusto/`):
 - Routing latency + DLQ monitoring (`routing_latency.kql`, `dlq_routing_messages.kql`)
 
 Operational KPIs (from specs & SLA doc):
+
 - Ack latency percentiles (per ack type) vs SLA target thresholds.
 - Daily reject / failure rates (TA1, 999) – trending downward goal.
 - Control number continuity (no gaps / duplicates beyond tolerated window).
 - DLQ backlog should remain 0 or drained within defined recovery SLA.
 
 Alerting Concept:
+
 - Threshold + Trend alerts (e.g., p95 latency > SLA for 3 consecutive intervals).
 - Anomaly-based (unusual spike in TA1 rejects using baseline from past N days).
 
 ---
+
 ## 10. Routing Mechanics (Planned Implementation)
+
 1. Router Function loads `routing-rules.json` at startup (with cache invalidation strategy future enhancement).
 2. Builds / ensures Service Bus subscription rules (idempotent reconciliation) mapping metadata attributes to label-based filters.
 3. On message arrival (post-validation event), applies evaluated rule set → publishes to topic with enriched headers (partnerId, transactionType, control numbers, correlation IDs).
 4. Dead-letter logic: malformed metadata or missing partner config results in DLQ send + logging for ops triage.
 
 Key Invariants:
+
 - Each inbound file yields at most one routing decision message.
 - A routing decision must be traceable back to immutable original file path + control numbers.
 - Rule evaluation order is deterministic (explicit priority or most-specific-match wins).
 
 ---
+
 ## 11. Outbound Acknowledgment Orchestration (Planned)
+
 Flow:
+
 1. Trigger condition: Downstream validation / claim adjudication events or timers.
 2. Aggregate required source metadata (original control numbers, statuses) to assemble standardized TA1 / 999 / 277CA payloads.
 3. Persist assembled ack to outbound storage + log to `AckAssembly_CL` with timing fields.
@@ -137,29 +166,39 @@ Latency Measurement Definition:
 `latencySeconds = datetime_diff('second', filePersistedTime, ackTriggerStartTime) * -1` (from example snippet) – AI should confirm directionality before reusing; negative multiplier suggests a historical correction; might standardize as `ackTriggerStartTime - filePersistedTime` later.
 
 ---
+
 ## 12. Control Number Governance
+
 Purpose: Detect ingestion gaps or duplicates that can compromise transactional integrity.
 Approach (prototype): KQL query scanning sequential increments by partner / interchange stream.
 Future Hardening:
+
 - Dedicated durable store (e.g., Cosmos DB / Table Storage) with atomic upsert.
 - Replay detection heuristics (same control number + file hash) → flag duplicates.
 - Alert if gap persists beyond tolerance window (e.g., next 5 arrivals do not close gap).
 
 ---
+
 ## 13. Tagging & Governance (Summary)
+
 Taxonomy defined in `09-tagging-governance-spec.md` (referenced, not duplicated here) – AI actions impacting IaC must preserve required tags (ownership, environment, dataSensitivity, costCenter, complianceScope, workload, component).
 
 Automated Policy Patterns (intended):
+
 - Deny: Resource creation without mandatory tags.
 - Append: Diagnostics settings + encryption.
 - Audit: Public network exposure exceptions.
 
 ---
+
 ## 14. Diagram Assets
+
 Mermaid `.mmd` sources under `docs/diagrams/` rendered to PNG via `scripts/generate-diagrams.ps1` (uses mermaid-cli). Labels simplified to avoid parser bug with parentheses. AI generating new diagrams should conform to existing style (top-down flowcharts; concise node labels) and update PNGs by rerunning script.
 
 ---
+
 ## 15. Current Repository Gaps (Implementation Phase Pending)
+
 | Gap | Impact | Suggested AI Assistance |
 |-----|--------|------------------------|
 | Missing ADF pipeline JSON exports | Hard to bootstrap pipeline-as-code | Generate pipeline definitions scaffolds |
@@ -170,10 +209,13 @@ Mermaid `.mmd` sources under `docs/diagrams/` rendered to PNG via `scripts/gener
 | No CI/CD YAML pipelines | Manual deployments | Scaffold GitHub Actions YAML referencing Bicep what-if + deployment gates |
 
 ---
+
 ## 16. AI Task Patterns (Common Prompts This Context Enables)
+
 Use this section to guide autonomous expansions safely.
 
 Pattern Examples:
+
 1. Generate Azure Function (Router) reading `routing-rules.json`, validating schema, syncing Service Bus subscription rules idempotently.
 2. Implement control number store adapter (interface + Cosmos DB or Table Storage backend) + update gap detection queries to reference store.
 3. Produce Bicep module for Log Analytics workspace with standardized tags & diagnostic settings to ingest Function App logs.
@@ -182,13 +224,16 @@ Pattern Examples:
 6. Add synthetic file generator (837 minimal test payload) + uploader script emitting randomized control numbers within a bounded sequence.
 
 Safeguards to Maintain:
+
 - Do not alter existing sample schema semantics without versioning (introduce `schemaVersion`).
 - Preserve tag mapping across all new Bicep resources.
 - Ensure any new log table naming remains consistent (`*_CL`).
 - Avoid embedding PHI in sample data (use synthetic placeholders).
 
 ---
+
 ## 17. Reasoning Invariants (Guidance for AI Consistency)
+
 - Every ingestion artifact must be traceable: (file path, partnerId, control numbers, event correlation ID).
 - Latency metrics require consistent timestamp semantics (define once; reuse variable names).
 - Routing rules = declarative truth; code should not hardcode partner logic.
@@ -196,7 +241,9 @@ Safeguards to Maintain:
 - Observability artifacts (queries, dashboards) should be version-controlled beside code that emits corresponding logs.
 
 ---
+
 ## 18. Open Questions / Assumptions (To Validate Later)
+
 | Item | Current Assumption | Potential Options |
 |------|--------------------|-------------------|
 | Durable control number store | Not yet selected | Cosmos DB, Azure Table Storage, SQL DB |
@@ -208,7 +255,9 @@ Safeguards to Maintain:
 AI producing code should surface when an assumption is material to its output.
 
 ---
+
 ## 19. Quick Reference: File Map (AI Lookup)
+
 | Path | Category | AI Usage |
 |------|----------|---------|
 | `README.md` | Entry point | High-level index; keep consistent if adding docs |
@@ -222,7 +271,9 @@ AI producing code should surface when an assumption is material to its output.
 | `docs/0*.md` | Detailed specs | Source-of-truth narratives |
 
 ---
+
 ## 20. Next Recommended AI Actions (If Asked to Proceed)
+
 1. Propose a concrete Router Function skeleton (language TBD) with rule hydration + rule reconciliation algorithm spec.
 2. Draft control number store schema (JSON + recommended partition strategy) + gap detection logic integration.
 3. Generate initial GitHub Actions workflow (`.github/workflows/ci.yml`) covering lint, schema validation, Bicep what-if.
@@ -230,14 +281,18 @@ AI producing code should surface when an assumption is material to its output.
 5. Convert 3–4 key KQL queries into a starter Workbook template JSON.
 
 ---
+
 ## 21. How to Use This Document as an AI
+
 - Treat sections 5, 16, 17 as canonical constraints & task templates.
 - Before generating new code, cross-reference invariants (section 17) and open questions (section 18) to flag assumption dependencies.
 - When modifying or extending infra, ensure Tagging + Observability integration are explicit steps.
 - Maintain bidirectional traceability: If a new metric is added, ensure corresponding KQL & documentation are updated in the same change set.
 
 ---
+
 ## 22. Changelog (This File)
+
 - v1.0 (Initial): Consolidated architectural & operational context for AI enablement.
 
 ---

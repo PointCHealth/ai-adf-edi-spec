@@ -5,6 +5,7 @@
 This repository contains comprehensive architecture specifications, implementation guides, and test artifacts for a HIPAA-aligned Azure platform that ingests healthcare EDI files (X12 834, 837, 277CA, etc.) from trading partners, validates and routes transactions through an event-driven architecture, and manages acknowledgments with SLA tracking.
 
 -**Platform Capabilities:**
+
 - **Event-driven ingestion** via SFTP into Azure Data Lake (raw immutable storage)
 - **Validation & metadata extraction** with interchange/control number tracking
 - **Intelligent routing** using declarative rules and Azure Service Bus
@@ -15,6 +16,7 @@ This repository contains comprehensive architecture specifications, implementati
 - **Partner self-service portal** specifications (API, domain model, security)
 
 **Current Status (October 2025):**
+
 - ✅ Complete architectural specifications (12 core docs + partner portal series)
 - ✅ GitHub Actions CI/CD implementation guide with production-ready workflows
 - ✅ Operational runbooks, KQL queries, and monitoring templates
@@ -73,10 +75,9 @@ Trading Partner Self-Service Portal (external-facing web application):
 | [docs/partner-portal/07-security-authz.md](docs/partner-portal/07-security-authz.md) | Authentication & authorization | Azure AD B2C, RBAC, multi-tenant isolation |
 | [docs/partner-portal/08-observability.md](docs/partner-portal/08-observability.md) | Logging, metrics, KQL queries | Custom logs, dashboards, alerts |
 
-
 ## 📂 Repository Structure
 
-```
+```text
 ├── docs/                           # Architecture & design specifications
 │   ├── 01-architecture-spec.md     # Core platform architecture
 │   ├── 04a-github-actions-implementation.md  # CI/CD workflows (production-ready)
@@ -181,6 +182,7 @@ cd scripts
 ```
 
 **Available Diagrams:**
+
 - `architecture-overview.mmd` - High-level system components
 - `routing-sequence.mmd` - Message routing flow
 - `outbound-assembly-sequence.mmd` - Acknowledgment generation
@@ -217,12 +219,14 @@ cd scripts
 ## 🎯 Implementation Roadmap
 
 ### Phase 1: Foundation (Current)
+
 - [x] Complete architecture specifications
 - [x] GitHub Actions CI/CD implementation
 - [x] Operational KQL queries and runbooks
 - [ ] Complete Bicep modules for all infrastructure
 
 ### Phase 2: Core Platform (Next)
+
 - [ ] Deploy baseline infrastructure (Storage, Service Bus, Key Vault)
 - [ ] Implement Router Function (config-driven routing)
 - [ ] Implement Outbound Orchestrator Function (ack generation)
@@ -230,6 +234,7 @@ cd scripts
 - [ ] Configure monitoring dashboards
 
 ### Phase 3: Validation & Operations
+
 - [ ] Implement control number durable store
 - [ ] Create synthetic test data generator
 - [ ] Deploy drift detection workflows
@@ -237,6 +242,7 @@ cd scripts
 - [ ] Execute end-to-end integration testing
 
 ### Phase 4: Partner Portal (Future)
+
 - [ ] Implement portal backend (API + database)
 - [ ] Build partner-facing UI
 - [ ] Integrate Azure AD B2C authentication
