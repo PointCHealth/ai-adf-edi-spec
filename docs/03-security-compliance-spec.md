@@ -45,7 +45,7 @@ Defines mandatory security, privacy, and compliance controls (HIPAA-aligned) for
 | Azure Function (validation) | System-assigned | Storage blob read (landing), write (raw/quarantine), Key Vault get secret |
 | Purview Scanner | Managed identity | Storage data reader |
 | Azure Function (router) | System-assigned | Storage blob read (raw header peek), Service Bus send (routing topic) |
-| Subsystem Processor (each) | User-assigned MI | Service Bus listen (filtered subscription), Storage read (raw) limited, optional staging write |
+| Subsystem Processor (each) | System-assigned MI | Service Bus listen (filtered subscription), Storage read (raw) limited, optional staging write |
 | Outbound Orchestrator | System-assigned | Read subsystem staging, write outbound container, Service Bus send (outbound-ready), control number store RW |
 
 ### 5.2 RBAC & ACL Strategy

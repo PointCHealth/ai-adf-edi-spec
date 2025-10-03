@@ -684,20 +684,19 @@ GO
 ### Access Control
 
 ```bicep
-// Managed Identity for Azure Functions
-resource processingFunctionIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'edi-processing-identity'
-  location: location
+// Azure Function App with system-assigned identity enabled elsewhere in template
+resource processingFunction 'Microsoft.Web/sites@2022-09-01' existing = {
+  name: processingFunctionName
 }
 
 // RBAC on Storage Account
 resource blobDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: storageAccount
-  name: guid(storageAccount.id, processingFunctionIdentity.id, 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
+  name: guid(storageAccount.id, processingFunction.id, 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 
       'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
-    principalId: processingFunctionIdentity.properties.principalId
+    principalId: processingFunction.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
