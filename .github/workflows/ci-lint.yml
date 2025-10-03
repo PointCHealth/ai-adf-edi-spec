@@ -42,4 +42,11 @@ jobs:
         run: pip install "sqlfluff==2.3.5" "click<8.2"
 
       - name: Run sqlfluff lint
-        run: sqlfluff lint --dialect tsql '**/*.sql'
+        run: |
+          set -euo pipefail
+          mapfile -t sql_files < <(git ls-files '*.sql')
+          if [ "${#sql_files[@]}" -eq 0 ]; then
+            echo "No SQL files to lint."
+          else
+            sqlfluff lint --dialect tsql "${sql_files[@]}"
+          fi
