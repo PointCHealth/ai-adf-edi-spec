@@ -4,17 +4,18 @@
 
 This repository contains comprehensive architecture specifications, implementation guides, and test artifacts for a HIPAA-aligned Azure platform that ingests healthcare EDI files (X12 834, 837, 277CA, etc.) from trading partners, validates and routes transactions through an event-driven architecture, and manages acknowledgments with SLA tracking.
 
-**Platform Capabilities:**
+-**Platform Capabilities:**
 - **Event-driven ingestion** via SFTP into Azure Data Lake (raw immutable storage)
 - **Validation & metadata extraction** with interchange/control number tracking
 - **Intelligent routing** using declarative rules and Azure Service Bus
 - **Outbound acknowledgment orchestration** (TA1, 999, 277CA) with latency monitoring
+- **Enterprise scheduling** for internally generated EDI transactions and reconciliations
 - **Comprehensive observability** through custom logs, KQL queries, and SLA dashboards
 - **Infrastructure as Code** using Bicep modules with GitHub Actions CI/CD
 - **Partner self-service portal** specifications (API, domain model, security)
 
 **Current Status (October 2025):**
-- ✅ Complete architectural specifications (11 core docs + partner portal series)
+- ✅ Complete architectural specifications (12 core docs + partner portal series)
 - ✅ GitHub Actions CI/CD implementation guide with production-ready workflows
 - ✅ Operational runbooks, KQL queries, and monitoring templates
 - ⏳ Bicep module scaffolds (Service Bus, Functions) - implementation in progress
@@ -33,6 +34,7 @@ This repository contains comprehensive architecture specifications, implementati
 | [docs/07-nfr-risks-spec.md](docs/07-nfr-risks-spec.md) | Non-functional requirements & risk register | Performance, scalability, DR, risk mitigation |
 | [docs/08-transaction-routing-outbound-spec.md](docs/08-transaction-routing-outbound-spec.md) | Routing logic & acknowledgment orchestration | Rule engine, control numbers, TA1/999/277CA |
 | [docs/09-tagging-governance-spec.md](docs/09-tagging-governance-spec.md) | Azure resource tagging standards | Taxonomy, policy enforcement, cost tracking |
+| [docs/14-enterprise-scheduler-spec.md](docs/14-enterprise-scheduler-spec.md) | Time-based EDI generation & scheduling | Calendar logic, dispatch pipeline, observability |
 | [docs/11-event-sourcing-architecture-spec.md](docs/11-event-sourcing-architecture-spec.md) | Event sourcing pattern for enrollment system | CQRS, domain events, projections |
 | [docs/12-raw-file-storage-strategy-spec.md](docs/12-raw-file-storage-strategy-spec.md) | Immutable storage & retention strategy | Lifecycle policies, compliance, lineage |
 
@@ -192,7 +194,7 @@ cd scripts
 
 ### Architecture Principles
 
-- ✅ **Event-driven orchestration** - No polling; uses Storage Events + Service Bus
+- ✅ **Event-driven orchestration with governed scheduling** - Events for partner flows, enterprise scheduler for proactive workloads
 - ✅ **Immutable data retention** - Raw files preserved for audit & lineage
 - ✅ **Least privilege security** - Managed Identities with scoped RBAC
 - ✅ **Configuration-driven routing** - Declarative rules, no hardcoded logic

@@ -13,12 +13,14 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Security & Compliance: HIPAA PHI handling, encryption in transit & at rest, auditable access
 - Operational Excellence: automated onboarding, self‑service partner configuration via code + metadata, proactive monitoring & alerting
 - Cost Transparency: tagging and cost allocation by environment & workload
+- Deterministic Scheduled Workloads: governed automation for outbound and reconciliation runs that cannot rely on partner events
 
 ## 3. In-Scope
 - Ingestion of EDI files via per‑partner SFTP user accounts (Managed SFTP on Storage / Azure SFTP pattern)
 - Routing to Azure Data Lake Storage Gen2 with multi‑zone layout (raw / curated / processed)
 - Metadata extraction (file, partner, transaction set, size, checksum, received timestamps, processing status)
 - Event‑driven orchestration using Azure Data Factory (ADF) pipelines & triggers (option: Event Grid + Azure Functions for advanced parsing)
+- Time-based orchestration via Enterprise Scheduler for internally generated or outbound EDI workloads
 - Centralized secret & key management (Azure Key Vault)
 - Observability: Logging, metrics, lineage, and alerting (Log Analytics, Azure Monitor, Azure Purview / Microsoft Purview)
 - Infrastructure as Code (Bicep) and CI/CD pipelines for promotion across dev/test/prod
@@ -33,7 +35,7 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 1. Zero Trust / Least Privilege – RBAC & ACL minimization, just-in-time elevation
 2. Separation of Concerns – Ingestion vs. enrichment vs. analytics tiers
 3. Idempotent & Replayable – Ability to reprocess from immutable raw store
-4. Event-Driven – Triggers fire on file arrival (no polling loops)
+4. Event-Driven First – Prefer storage and message events for partner-driven flows, complemented by governed scheduling for proactive workloads
 5. Declarative Infrastructure – Everything versioned & reproducible via IaC
 6. Secure by Default – Encryption, private endpoints, restricted egress
 7. Observability First – Unified telemetry, lineage, and SLA tracking
@@ -61,6 +63,7 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - GitHub – Repository, Actions workflows (CI for IaC + ADF JSON, CD for releases)
 - Azure Active Directory (Entra ID) – Managed Identities for ADF, Functions, Purview scanners
 - Azure Service Bus (Topics) – Durable routing fan‑out for downstream destination systems
+- Enterprise Scheduler (ADF + Function + Service Bus) – Governs time-based EDI generation and reconciliation jobs (see 14-enterprise-scheduler-spec)
 - **Downstream Destination Systems** (out of scope for core platform) – Independent applications that subscribe to routing messages (e.g., Eligibility Service, Claims Processing, Enrollment Management with event sourcing, Remittance Processing)
 
 ### Routing & Outbound (Preview Overview)
@@ -97,6 +100,17 @@ Performance Considerations:
 - Target routing publish latency p95 < 2 seconds from raw persistence.
 
 (Detailed sequencing, message schema, control number governance, and outbound acknowledgment SLAs are defined in `08-transaction-routing-outbound-spec.md`.)
+
+### Enterprise Scheduler (Time-Based Generation)
+
+Some enterprise processes must originate EDI transactions on a fixed cadence (e.g., nightly enrollment deltas, weekly compliance acknowledgments, monthly financial remittances). To support these proactive workloads without reverting to bespoke cron jobs, the platform incorporates an **Enterprise Scheduler** that executes within Azure Data Factory and Azure Functions:
+
+- Schedule definitions live in source control (`config/schedules`) and are validated by CI to ensure change governance.
+- An ADF trigger invokes `pl_schedule_dispatch`, which evaluates calendars, blackout windows, and dependencies before publishing jobs to a dedicated Service Bus topic.
+- `fn_scheduler_router` fan-outs execution to target pipelines or Functions (e.g., outbound assemblers, reconciliation scripts) while applying retry and SLA monitoring policies.
+- Observability is captured in Log Analytics (`SchedulerRun_CL`), and operations receive alerts on late or failed jobs.
+
+Reference `14-enterprise-scheduler-spec.md` for the detailed design, configuration schema, and operational playbooks supporting this capability.
 
 #### Routing Fast Path Sequence (Mermaid)
 
