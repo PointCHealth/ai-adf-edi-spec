@@ -53,6 +53,7 @@ This specification bridges the **core platform routing layer** (see Doc 08) and 
 | **Cost Optimization** | Reduced development time, shared infrastructure, optimized resource usage, unified monitoring |
 
 **Mapping Rules Repository Strategy**:
+
 - **Centralized Configuration**: All mapping rules stored in structured Azure Blob Storage
 - **Specialized Mappings**: Support for claim system-specific and trading partner-specific transformations
 - **Version Management**: Built-in versioning and backward compatibility support
@@ -404,6 +405,7 @@ config/mappers/
 **Standardized Architecture**: **Azure Functions (C#)** for all claim system mappers
 
 **Technology Stack**:
+
 - **Azure Functions (C#)** - Primary compute platform
 - **X12Parser.Net / EDI.Net** - X12 parsing and generation
 - **Newtonsoft.Json** - JSON processing for mapping rules and canonical responses
@@ -411,6 +413,7 @@ config/mappers/
 - **System.Text.Json** - High-performance JSON serialization where applicable
 
 **Benefits of Standardization**:
+
 - **Consistent Development Experience**: Single technology stack reduces learning curve and maintenance overhead
 - **Full Control over X12 Processing**: Native C# libraries provide complete access to X12 structure and validation
 - **Complex Business Logic Support**: C# enables sophisticated conditional transformations and validation rules
@@ -659,6 +662,7 @@ config/connectors/
 **Standardized Architecture**: **Azure Functions (C#)** for all connectors
 
 **Technology Stack**:
+
 - **Azure Functions (C#)** - Primary compute platform for all connector types
 - **SSH.NET** - SFTP connectivity
 - **HttpClient + Polly** - REST API connectivity with resilience patterns
@@ -1125,12 +1129,14 @@ Sections:
 | **Monitoring & Observability** | **Azure Monitor + Log Analytics** | Application Insights SDK | Native Azure integration |
 
 **Eliminated Technologies** (Phase 1):
+
 - Logic Apps (complexity of debugging, limited custom logic)
 - Azure Data Factory Mapping Data Flow (batch-only, limited real-time support)
 - BizTalk (legacy, high maintenance overhead)
 - Multiple technology stacks (operational complexity)
 
 **Development Standards**:
+
 - **Language**: C# 12+ (.NET 8)
 - **Function Runtime**: Azure Functions v4 (isolated worker model)
 - **Authentication**: Managed Identity for all Azure resources

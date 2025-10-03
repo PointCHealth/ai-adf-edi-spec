@@ -4,54 +4,89 @@
 
 ## Prompt
 
-You are producing a comprehensive infrastructure design & Bicep module plan prior to authoring or extending templates in `infra/bicep/modules`.
+You are producing a comprehensive infrastructure design & Bicep module plan for implementing a **5-layer architecture** healthcare EDI processing platform.
+
+### Solution Architecture Context
+
+The platform implements a **layered, domain-driven architecture**:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                Cross-Cutting Concerns                       │
+│         (Security, Observability, Configuration)           │
+├─────────────────────────────────────────────────────────────┤
+│               Outbound Assembly Layer                       │
+│        (Acknowledgment Generation, Control Numbers)        │
+├─────────────────────────────────────────────────────────────┤
+│              Destination Systems Layer                      │
+│     (Eligibility, Claims, Enrollment, Remittance)         │
+├─────────────────────────────────────────────────────────────┤
+│               Routing & Event Hub Layer                     │
+│           (Message Routing, Event Correlation)             │
+├─────────────────────────────────────────────────────────────┤
+│                 Core Platform Layer                         │
+│         (Ingestion, Storage, Infrastructure)               │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Context Inputs
 
 - Architecture overview: `docs/01-architecture-spec.md`
+- Solution structure guide: `docs/15-solution-structure-implementation-guide.md`
 - Routing architecture: `docs/08-transaction-routing-outbound-spec.md`
 - Tagging & governance reference: `docs/09-tagging-governance-spec.md`
 - Security & compliance reference: `docs/03-security-compliance-spec.md`
 
 ### Objectives
 
-1. Inventory required Azure services & SKUs (Functions, Service Bus with Topics/Subscriptions, Storage, Key Vault, App Config, Log Analytics, Application Insights, Event Grid, Data Factory if applicable, Container Registry, Azure SQL for Control Number Store)
-2. Map each logical capability (routing, outbound assembly, control number management, partner portal backend, observability) to resource set & deployment unit
-3. Define module boundaries & composition (one module per capability vs shared primitives) with reuse strategy
+1. Inventory required Azure services & SKUs mapped to architectural layers
+2. Define module boundaries aligned with domain separation and deployment units
+3. Map each logical capability to resource set with clear ownership boundaries
 4. Produce parameter surface per module (mandatory vs optional, secureString vs string)
-5. Establish naming alignment with output from environment foundation prompt
-6. Include security & networking: private endpoints, firewall rules, identity assignment
-7. Provide dependency graph (topological order for deployment)
-8. Define idempotency & drift detection approach (what outputs to expose, how to detect change)
-9. Suggest test harness approach for modules (what to validate post-deploy)
-10. Cost awareness: list cost drivers & right-sizing assumptions
+5. Establish naming alignment with environment foundation and layer-specific prefixes
+6. Include security & networking: private endpoints, firewall rules, identity assignment per layer
+7. Provide dependency graph respecting layer boundaries and deployment order
+8. Define idempotency & drift detection approach for layer-based deployment
+9. Suggest test harness approach aligned with solution architecture patterns
+10. Cost awareness with layer-specific optimization strategies
+
+### Architecture-Specific Requirements
+
+**Layer Isolation**: Each layer should be independently deployable with minimal cross-layer dependencies
+**Microservice Boundaries**: Destination systems must be isolated with their own infrastructure modules
+**Event-Driven Integration**: Service Bus namespace and topics must support filtered subscriptions
+**Control Number Store**: Azure SQL Database with optimistic concurrency for acknowledgment generation
+**Security by Design**: Managed Identities per layer with least-privilege RBAC
 
 ### Constraints
 
-- Avoid over-modularization; prefer cohesive modules delivering a functional slice
-- All modules MUST expose standardized outputs: `resourceIds`, `endpoints`, `identityPrincipalIds` where relevant
-- Parameters MUST have clear descriptions & defaults where safe
-- Security defaults locked down (public network disabled unless explicitly enabled)
+- Align modules with architectural layers for clear deployment boundaries  
+- Each destination system gets its own infrastructure module (independent deployment)
+- Shared services (routing, outbound) get dedicated modules
+- All modules MUST expose standardized outputs: `resourceIds`, `endpoints`, `identityPrincipalIds`
+- Parameters MUST align with layer-specific security and networking requirements
+- Security defaults locked down with layer-appropriate private endpoint strategies
 
 ### Required Output Sections
 
-1. Service Inventory Table
-2. Capability-to-Resource Mapping
-3. Module Boundary Definition
-4. Module Parameter Specification
-5. Security & Networking Plan
-6. Deployment Dependency Graph
-7. Outputs & Drift Detection Strategy
-8. Module Test Harness Plan
-9. Cost Considerations
-10. Open Questions
+1. **Layer-to-Azure Service Mapping**
+2. **Module Boundary Definition (Layer-Aligned)**  
+3. **Destination System Module Strategy**
+4. **Module Parameter Specification**
+5. **Security & Networking Plan (Per Layer)**
+6. **Layer Dependency Graph**
+7. **Outputs & Drift Detection Strategy**
+8. **Layer-Specific Test Harness Plan**
+9. **Cost Considerations (Per Layer)**
+10. **Implementation Phase Alignment**
 
 ### Acceptance Criteria
 
-- Every capability maps to at least one module
-- No module lists unused parameters
-- Dependency graph is acyclic & deployment order explicit
-- Test harness plan includes both functional & guardrail validations
+- Every architectural layer maps to one or more Bicep modules
+- Destination systems are independently deployable with isolated infrastructure
+- No module creates cross-layer dependencies that prevent independent deployment  
+- Dependency graph respects layer boundaries and enables phase-based delivery
+- Test harness validates both functional requirements and architectural boundaries
 
 ### Variable Placeholders
 

@@ -2,9 +2,75 @@
 
 ## Overview
 
-This repository contains comprehensive architecture specifications, implementation guides, and test artifacts for a HIPAA-aligned Azure platform that ingests healthcare EDI files (X12 834, 837, 277CA, etc.) from trading partners, validates and routes transactions through an event-driven architecture, and manages acknowledgments with SLA tracking.
+This repository contains comprehensive architecture specifications, implementation guides, and test artifacts for a HIPAA-aligned Azure platform that ingests healthcare EDI files using a **layered, domain-driven architecture** designed for scalability, maintainability, and compliance.
 
--**Platform Capabilities:**
+## 🏗️ Solution Architecture Overview
+
+This platform implements a **5-layer architecture** optimized for healthcare EDI processing:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                Cross-Cutting Concerns                       │
+│         (Security, Observability, Configuration)           │
+├─────────────────────────────────────────────────────────────┤
+│               Outbound Assembly Layer                       │
+│        (Acknowledgment Generation, Control Numbers)        │
+├─────────────────────────────────────────────────────────────┤
+│              Destination Systems Layer                      │
+│     (Eligibility, Claims, Enrollment, Remittance)         │
+├─────────────────────────────────────────────────────────────┤
+│               Routing & Event Hub Layer                     │
+│           (Message Routing, Event Correlation)             │
+├─────────────────────────────────────────────────────────────┤
+│                 Core Platform Layer                         │
+│         (Ingestion, Storage, Infrastructure)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Principles
+
+- **Event-Driven**: File arrival → validation → routing → processing → acknowledgment
+- **Domain-Driven**: Independent microservices per business domain  
+- **Loosely Coupled**: Service Bus messaging with clear service boundaries
+- **Security by Design**: HIPAA compliance from day one
+- **Observable**: End-to-end traceability and monitoring
+
+## 🚀 Implementation Phases
+
+| Phase | Duration | Focus Area | Key Deliverables |
+|-------|----------|------------|------------------|
+| **Phase 1: Foundation** | 4 weeks | Infrastructure & basic ingestion | Bicep modules, ADF pipelines, storage zones |
+| **Phase 2: Routing** | 4 weeks | Event-driven routing & first destination | Router Function, Service Bus, eligibility service |
+| **Phase 3: Scale** | 8 weeks | Multiple destinations & enhanced outbound | Claims/enrollment processing, control numbers |
+| **Phase 4: Production** | 4 weeks | Security hardening & operations | HIPAA compliance, monitoring, DR strategy |
+
+## 🔧 Technology Stack
+
+### Core Platform
+
+- **Azure Data Factory**: Managed orchestration with built-in lineage
+- **Azure Data Lake Storage Gen2**: Hierarchical namespace for partitioning
+- **Event Grid**: Low-latency event-driven triggers
+
+### Routing & Messaging
+
+- **Azure Service Bus**: Ordered, durable messaging with SQL filtering
+- **Azure Functions**: Serverless compute for routing logic
+- **Correlation IDs**: End-to-end traceability
+
+### Destination Systems
+
+- **Microservices Architecture**: Domain-specific patterns (CRUD, Event Sourcing, Workflow)
+- **Independent Deployment**: Each domain manages its own data and lifecycle
+- **Service Bus Subscriptions**: Filtered message consumption per domain
+
+### Outbound & Control
+
+- **Azure Durable Functions**: Stateful orchestration for acknowledgments
+- **Azure SQL Database**: ACID-compliant control number management
+- **Template Engine**: Standardized X12 acknowledgment generation
+
+**Platform Capabilities:**
 
 - **Event-driven ingestion** via SFTP into Azure Data Lake (raw immutable storage)
 - **Validation & metadata extraction** with interchange/control number tracking
@@ -17,7 +83,7 @@ This repository contains comprehensive architecture specifications, implementati
 
 **Current Status (October 2025):**
 
-- ✅ Complete architectural specifications (12 core docs + partner portal series)
+- ✅ Complete architectural specifications (12 core docs + partner portal series + solution structure guide)
 - ✅ GitHub Actions CI/CD implementation guide with production-ready workflows
 - ✅ Operational runbooks, KQL queries, and monitoring templates
 - ⏳ Bicep module scaffolds (Service Bus, Functions) - implementation in progress
@@ -39,6 +105,7 @@ This repository contains comprehensive architecture specifications, implementati
 | [docs/14-enterprise-scheduler-spec.md](docs/14-enterprise-scheduler-spec.md) | Time-based EDI generation & scheduling | Calendar logic, dispatch pipeline, observability |
 | [docs/11-event-sourcing-architecture-spec.md](docs/11-event-sourcing-architecture-spec.md) | Event sourcing pattern for enrollment system | CQRS, domain events, projections |
 | [docs/12-raw-file-storage-strategy-spec.md](docs/12-raw-file-storage-strategy-spec.md) | Immutable storage & retention strategy | Lifecycle policies, compliance, lineage |
+| [docs/15-solution-structure-implementation-guide.md](docs/15-solution-structure-implementation-guide.md) | **Detailed solution structure & patterns** | Layer architecture, microservices, testing strategy |
 
 ### Infrastructure & DevOps
 

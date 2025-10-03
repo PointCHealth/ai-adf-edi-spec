@@ -234,11 +234,29 @@ Safeguards to Maintain:
 
 ## 17. Reasoning Invariants (Guidance for AI Consistency)
 
+### 17.1 Core Architectural Principles
+
 - Every ingestion artifact must be traceable: (file path, partnerId, control numbers, event correlation ID).
 - Latency metrics require consistent timestamp semantics (define once; reuse variable names).
 - Routing rules = declarative truth; code should not hardcode partner logic.
 - Infrastructure naming pattern must remain deterministic to avoid drift between environments.
 - Observability artifacts (queries, dashboards) should be version-controlled beside code that emits corresponding logs.
+
+### 17.2 Design Patterns to Maintain
+
+- **Event-Driven Architecture**: File arrival → validation → routing → processing → acknowledgment
+- **Saga Pattern**: Track multi-step acknowledgment workflows with compensation
+- **Circuit Breaker**: Isolate failing downstream systems to prevent cascade failures
+- **Strangler Fig**: Enable gradual migration from legacy EDI processing
+- **Domain Separation**: Each destination system independently deployable with own data store
+
+### 17.3 Technology Decisions (Rationale)
+
+- **Service Bus over Event Grid**: Ordering guarantees and rich SQL filtering required
+- **Azure SQL for Control Numbers**: ACID guarantees and optimistic concurrency support
+- **Managed Identities**: Eliminate shared secrets, support automatic rotation
+- **Durable Functions for Outbound**: State management for complex acknowledgment workflows
+- **ADLS Gen2**: Hierarchical namespace required for data lake partitioning strategy
 
 ---
 
@@ -256,10 +274,54 @@ AI producing code should surface when an assumption is material to its output.
 
 ---
 
-## 19. Quick Reference: File Map (AI Lookup)
+## 15. Recommended Solution Structure
+
+### 15.1 Core Architecture Layers
+
+The implementation should be structured around **5 core functional domains** with clean separation of concerns:
+
+| Layer | Purpose | Technology Stack | Repository Path |
+|-------|---------|------------------|----------------|
+| **Core Platform** | Foundation ingestion, storage, shared utilities | ADF, ADLS Gen2, Event Grid | `/src/platform/` |
+| **Routing & Event Hub** | Decoupling layer, message routing | Azure Functions, Service Bus | `/src/routing/` |
+| **Destination Systems** | Business logic microservices | Domain-specific (CRUD, Event Sourcing) | `/src/destinations/` |
+| **Outbound Assembly** | Acknowledgment generation | Durable Functions, Azure SQL | `/src/outbound/` |
+| **Cross-Cutting** | Security, observability, configuration | Log Analytics, Key Vault, Bicep | `/src/cross-cutting/` |
+
+### 15.2 Implementation Phases
+
+| Phase | Duration | Focus | Key Deliverables |
+|-------|----------|-------|------------------|
+| **Phase 1: Foundation** | Weeks 1-4 | Infrastructure, basic ingestion | Bicep modules, ADF pipelines, storage zones |
+| **Phase 2: Routing & First Destination** | Weeks 5-8 | Event-driven routing, eligibility service | Router Function, Service Bus, 270/271 processing |
+| **Phase 3: Scale & Additional Destinations** | Weeks 9-16 | Claims, enrollment, enhanced outbound | 837/834 processing, control number store |
+| **Phase 4: Production Readiness** | Weeks 17-20 | Security hardening, operations | HIPAA compliance, monitoring, DR strategy |
+
+### 15.3 Repository Structure Recommendation
+
+```text
+/
+├── docs/                         # (existing specs)
+├── src/
+│   ├── platform/                # Core ingestion & infrastructure
+│   ├── routing/                 # Message routing layer
+│   ├── destinations/            # Business domain services
+│   ├── outbound/               # Acknowledgment assembly
+│   └── shared/                 # Common libraries
+├── infra/
+│   ├── bicep/                  # (existing modules)
+│   └── environments/           # Environment-specific configs
+├── tests/
+│   ├── unit/                   # Component tests
+│   ├── integration/            # Service integration tests
+│   └── e2e/                    # End-to-end scenarios
+└── .github/workflows/          # CI/CD pipelines
+```
+
+## 16. Quick Reference: File Map (AI Lookup)
 
 | Path | Category | AI Usage |
-|------|----------|---------|
+|------|----------|----------|
 | `README.md` | Entry point | High-level index; keep consistent if adding docs |
 | `AI_PROJECT_OVERVIEW.md` | AI context | Central reasoning substrate (this file) |
 | `ACK_SLA.md` | SLA & KQL | Source for performance targets |
@@ -272,13 +334,35 @@ AI producing code should surface when an assumption is material to its output.
 
 ---
 
-## 20. Next Recommended AI Actions (If Asked to Proceed)
+## 20. Next Recommended AI Actions (Structured Implementation)
 
-1. Propose a concrete Router Function skeleton (language TBD) with rule hydration + rule reconciliation algorithm spec.
-2. Draft control number store schema (JSON + recommended partition strategy) + gap detection logic integration.
-3. Generate initial GitHub Actions workflow (`.github/workflows/ci.yml`) covering lint, schema validation, Bicep what-if.
-4. Author a Bicep module for Log Analytics + Diagnostic settings + tag application.
-5. Convert 3–4 key KQL queries into a starter Workbook template JSON.
+### Phase 1 Actions (Foundation)
+
+1. **Infrastructure Setup**: Generate Bicep modules for core services (Storage, ADF, Event Grid, Log Analytics) with proper tagging and security defaults.
+2. **CI/CD Pipeline**: Create GitHub Actions workflow for Bicep validation, deployment, and testing.
+3. **Core Ingestion**: Implement ADF pipeline templates for basic file validation and metadata extraction.
+4. **Observability Foundation**: Convert key KQL queries into Log Analytics custom tables and basic dashboards.
+
+### Phase 2 Actions (Routing Layer)
+
+1. **Router Function**: Generate Azure Function code for envelope parsing and Service Bus message publishing.
+2. **Service Bus Configuration**: Create Bicep modules for topics, subscriptions, and filtering rules.
+3. **First Destination Service**: Implement eligibility service (270/271) as proof of concept microservice.
+4. **Basic Acknowledgments**: Generate 999 functional acknowledgment assembly logic.
+
+### Phase 3 Actions (Scale)
+
+1. **Claims Processing**: Implement 837/277CA destination service with complex business logic patterns.
+2. **Control Number Store**: Create Azure SQL-based counter management with optimistic concurrency.
+3. **Event Sourcing Example**: Implement enrollment management (834) using event sourcing pattern.
+4. **Enhanced Outbound**: Complete acknowledgment lifecycle (TA1, 277CA, etc.) with SLA tracking.
+
+### Phase 4 Actions (Production)
+
+1. **Security Hardening**: Implement HIPAA compliance controls, private endpoints, and RBAC policies.
+2. **Operational Excellence**: Create monitoring dashboards, alert rules, and incident response runbooks.
+3. **Partner Portal**: Generate self-service partner configuration and testing tools.
+4. **DR Strategy**: Implement multi-region backup and disaster recovery procedures.
 
 ---
 
