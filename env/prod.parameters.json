@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": { "value": "prod" },
+    "location": { "value": "eastus" },
+    "tags": {
+      "value": {
+        "env": "prod",
+        "owner": "data-platform"
+      }
+    },
+    "routingServiceBusNamespaceName": {
+      "value": "sb-edi-prod"
+    },
+    "routingTopicName": {
+      "value": "edi-routing"
+    },
+    "outboundReadyTopicName": {
+      "value": "edi-outbound-ready"
+    },
+    "controlNumberSqlServerName": {
+      "value": "sql-edi-prod"
+    },
+    "controlNumberDatabaseName": {
+      "value": "sqldb-controlnumbers-prod"
+    },
+    "controlNumberSku": {
+      "value": "GP_S_Gen5_4"
+    },
+    "controlNumberLogAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "schedulerEnabled": { "value": true },
+    "schedulerNamespaceName": {
+      "value": "sb-scheduler-prod"
+    },
+    "schedulerSku": {
+      "value": "Premium"
+    },
+    "schedulerDispatchTopicName": {
+      "value": "scheduler-dispatch-prod"
+    },
+    "schedulerDeadLetterQueueName": {
+      "value": "scheduler-dlq-prod"
+    },
+    "schedulerCompleteQueueName": {
+      "value": "scheduler-complete-prod"
+    },
+    "schedulerFunctionAppName": {
+      "value": "func-scheduler-prod"
+    },
+    "schedulerFunctionStorageAccountName": {
+      "value": "stschedprod"
+    },
+    "schedulerFunctionPlanName": {
+      "value": "plan-scheduler-prod"
+    },
+    "schedulerAppInsightsName": {
+      "value": "appi-scheduler-prod"
+    },
+    "schedulerWorkerRuntime": {
+      "value": "dotnet-isolated"
+    },
+    "schedulerStateStorageAccountName": {
+      "value": "stschedstprod"
+    },
+    "schedulerStateTableName": {
+      "value": "SchedulerStateProd"
+    }
+  }
+}

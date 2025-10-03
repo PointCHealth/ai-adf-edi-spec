@@ -95,6 +95,10 @@ Benefits over Service Principal secrets:
       servicebus.bicep
       router-function.bicep
       outbound-orchestrator.bicep
+      azure-sql-controlnumbers.bicep
+      scheduler-function.bicep
+      scheduler-servicebus.bicep
+      scheduler-state-store.bicep
       monitoring.bicep
       purview.bicep
       policy.bicep
@@ -124,7 +128,14 @@ Benefits over Service Principal secrets:
 | outboundReadyTopicName | Optional outbound topic | edi-outbound-ready |
 | serviceBusSku | Namespace SKU (Basic/Standard/Premium) | Standard |
 | enablePrivateEndpointsSb | Private endpoint for Service Bus | true/false |
-| controlNumberStoreType | Counter backend (table/durable) | table |
+| controlNumberSqlServerName | Azure SQL logical server name | sql-edi-dev |
+| controlNumberDatabaseName | Database name for control numbers | sqldb-controlnumbers |
+| controlNumberSku | Azure SQL SKU | GP_S_Gen5_2 |
+| schedulerEnabled | Deploy enterprise scheduler components | true/false |
+| schedulerDispatchTopicName | Scheduler dispatch topic | scheduler-dispatch |
+| schedulerDeadLetterQueueName | Scheduler DLQ | scheduler-dlq |
+| schedulerCompleteQueueName | Completion queue for downstream callbacks | scheduler-complete |
+| schedulerStateTableName | Scheduler state table | SchedulerState |
 
 ## 6. Naming & Tagging
 
@@ -202,6 +213,14 @@ graph LR
 - Create release annotation in Log Analytics
 - Notify stakeholders (Teams webhook)
 
+### 7.4 Enterprise Scheduler Deployment Alignment
+
+- `schedulerEnabled=true` provisions Service Bus artifacts (`scheduler-dispatch`, `scheduler-dlq`, `scheduler-complete`) alongside diagnostic settings streaming metrics to Log Analytics.
+- Scheduler Function App (`scheduler-function.bicep`) deploys consumption plan code with managed identity grants: send on dispatch topic, listen on completion queue, `Storage Table Data Contributor` on scheduler state table.
+- State store module (`scheduler-state-store.bicep`) provisions Storage account table or Cosmos container (configurable) plus role assignments for operations dashboards.
+- CI validates schedule JSON via `config-validation.yml`; CD pipeline publishes configuration as artifacts and triggers smoke test (`pl_schedule_dispatch` dry run) after infra deploy.
+- Runbook references (`OP-SCH-001/2/3`) stored in docs/06 align with monitoring alerts defined in `monitoring.bicep` (SchedulerLateRun, SchedulerFailure, SchedulerDLQDepth).
+
 ## 8. Data Factory Assets Versioning
 
 - Use ADF Git integration (collaboration branch) or export pipelines via script `adf_export_pipeline.yml` to JSON artifacts under `adf/` directory.
@@ -216,7 +235,7 @@ graph LR
 | SFTP Local Users | Scripted using Azure CLI post Storage creation (idempotent) |
 | Diagnostic Settings | Bicep referencing Log Analytics workspace ID |
 | Service Bus Auth (Managed) | No SAS keys; assign RBAC roles to identities |
-| Control Number Counter Seed | Key Vault secret or Table entity created if absent |
+| Control Number Counter Seed | Post-deploy SQL script initializes Azure SQL counters |
 
 ## 10. Policies & Compliance as Code
 
@@ -363,12 +382,67 @@ module subRuleEligibility '../scripts/add-subscription-rule.bicep' = if (false) 
 Two Function Apps (or one with isolated functions) recommended for least privilege separation:
 
 - Router: trigger (HTTP from ADF or Event Grid) + Service Bus sender output binding.
-- Outbound Orchestrator: timer / queue trigger reading subsystem outcomes + outbound assembly logic, optional Durable Functions entity for control numbers.
+- Outbound Orchestrator: timer / queue trigger reading subsystem outcomes + outbound assembly logic with Azure SQL counter access via managed identity.
 
-### 17.3 Control Number Store (Table Storage Option)
+### 17.3 Control Number Store (Azure SQL Example)
 
-Table entity schema:
-PartitionKey: `COUNTER` | RowKey: `<partnerCode>-<sequenceType>` | `currentValue` (int) | `updatedUtc` (datetime). Increment via optimistic concurrency (If-Match ETag) logic in Function code; exposed IaC only creates seed rows if absent (deployment script).
+```bicep
+param sqlServerName string
+param sqlAdministratorLogin string
+@secure()
+param sqlAdministratorPassword string
+param sqlDatabaseName string
+param sqlSkuName string = 'GP_S_Gen5_2'
+
+resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
+  name: sqlServerName
+  location: location
+  properties: {
+    administratorLogin: sqlAdministratorLogin
+    administratorLoginPassword: sqlAdministratorPassword
+    minimalTlsVersion: '1.2'
+    publicNetworkAccess: 'Disabled'
+  }
+  tags: tags
+}
+
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
+  name: '${sqlServerName}/${sqlDatabaseName}'
+  location: location
+  sku: {
+    name: sqlSkuName
+  }
+  properties: {
+    autoPauseDelay: -1
+    zoneRedundant: false
+  }
+  tags: tags
+}
+
+resource sqlFirewall 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
+  name: '${sqlServerName}/AllowAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+  dependsOn: [ sqlServer ]
+}
+
+// Grant outbound orchestrator managed identity database access
+module sqlRoleAssignment '../modules/azure-sql-mi-role.bicep' = {
+  name: 'mi-outbound-controlnumbers'
+  params: {
+    principalId: outboundOrchestratorPrincipalId
+    sqlServerName: sqlServer.name
+    sqlDatabaseName: sqlDatabase.name
+    role: 'db_datawriter'
+  }
+}
+```
+
+- Apply Transparent Data Encryption defaults and diagnostic settings for audit.
+- Post-deployment automation executes migration scripts (`/infra/sql/control-numbers/*.sql`) to create tables, sequences, and seed rows.
+- Managed identities (outbound orchestrator, maintenance functions) receive least-privilege roles (`db_datareader`, `db_datawriter`); no SQL logins stored in secrets.
 
 ## 18. Governance & Approvals
 
@@ -386,7 +460,8 @@ PartitionKey: `COUNTER` | RowKey: `<partnerCode>-<sequenceType>` | `currentValue
 | SAS keys accidentally enabled on Service Bus | Enforce `disableLocalAuth=true` and policy audit |
 | Over-privileged router function | Separate function app + minimal RBAC (Send only) |
 | Subscription rule drift | Nightly validation script compares expected JSON filters vs. actual |
-| Control number counter corruption | Nightly integrity check (monotonic progression query) + backup export |
+| Control number counter corruption | Azure SQL backups + nightly integrity query (monotonic progression) |
+| Scheduler message backlog | Monitor scheduler topics/queues + scale Function plan |
 
 ## 20. Open Items
 

@@ -1,0 +1,42 @@
+name: IaC Parameter Validation
+
+on:
+  pull_request:
+    paths:
+      - 'env/*.parameters.json'
+      - 'infra/bicep/**'
+      - 'infra/sql/**'
+  push:
+    branches: [ main ]
+    paths:
+      - 'env/*.parameters.json'
+      - 'infra/bicep/**'
+      - 'infra/sql/**'
+
+jobs:
+  validate-parameters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate parameter files contain control number settings
+        run: |
+          set -euo pipefail
+          for file in env/*.parameters.json; do
+            echo "Validating ${file}"
+            jq -e '.parameters.routingServiceBusNamespaceName.value' "$file" >/dev/null
+            jq -e '.parameters.controlNumberSqlServerName.value' "$file" >/dev/null
+            jq -e '.parameters.controlNumberDatabaseName.value' "$file" >/dev/null
+            jq -e '.parameters.controlNumberSku.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerEnabled.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerNamespaceName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerDispatchTopicName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerDeadLetterQueueName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerCompleteQueueName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerFunctionAppName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerFunctionStorageAccountName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerFunctionPlanName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerStateStorageAccountName.value' "$file" >/dev/null
+            jq -e '.parameters.schedulerStateTableName.value' "$file" >/dev/null
+          done

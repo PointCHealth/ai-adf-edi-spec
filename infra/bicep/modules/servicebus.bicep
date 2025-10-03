@@ -43,3 +43,4 @@ resource outboundReadyTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-p
 
 output routingTopicId string = routingTopic.id
 output outboundReadyTopicId string = enableOutboundReady ? outboundReadyTopic.id : ''
+output namespaceId string = sb.id

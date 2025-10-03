@@ -1,0 +1,79 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/bicep/**'
+      - 'infra/sql/**'
+      - 'env/*.parameters.json'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to deploy'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+        default: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        include:
+          - env: dev
+            resourceGroup: rg-edi-dev
+            parameterFile: env/dev.parameters.json
+            sqlLoginSecret: DEV_SQL_ADMIN_LOGIN
+            sqlPasswordSecret: DEV_SQL_ADMIN_PASSWORD
+          - env: test
+            resourceGroup: rg-edi-test
+            parameterFile: env/test.parameters.json
+            sqlLoginSecret: TEST_SQL_ADMIN_LOGIN
+            sqlPasswordSecret: TEST_SQL_ADMIN_PASSWORD
+          - env: prod
+            resourceGroup: rg-edi-prod
+            parameterFile: env/prod.parameters.json
+            sqlLoginSecret: PROD_SQL_ADMIN_LOGIN
+            sqlPasswordSecret: PROD_SQL_ADMIN_PASSWORD
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        if: ${{ (github.event_name == 'push' && matrix.env == 'dev') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == matrix.env) }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Bicep template
+        if: ${{ (github.event_name == 'push' && matrix.env == 'dev') ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == matrix.env) }}
+        env:
+          SQL_ADMIN_LOGIN: ${{ secrets[matrix.sqlLoginSecret] }}
+          SQL_ADMIN_PASSWORD: ${{ secrets[matrix.sqlPasswordSecret] }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SQL_ADMIN_LOGIN" ] || [ -z "$SQL_ADMIN_PASSWORD" ]; then
+            echo "SQL administrator credentials not configured for ${{ matrix.env }}." >&2
+            exit 1
+          fi
+
+          az deployment group create \
+            --name "iac-${{ matrix.env }}-${GITHUB_RUN_ID}" \
+            --resource-group "${{ matrix.resourceGroup }}" \
+            --template-file infra/bicep/main.bicep \
+            --parameters @"${{ matrix.parameterFile }}" \
+              controlNumberAdminLogin="$SQL_ADMIN_LOGIN" \
+              controlNumberAdminPassword="$SQL_ADMIN_PASSWORD"
