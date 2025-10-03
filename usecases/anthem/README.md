@@ -22,8 +22,8 @@ Point C Health is onboarding Anthem as a trading partner for X12-based data exch
 
 ## Internal Claim Systems Impacted
 
-- QicLink (core commercial claims)
-- VBA (value-based administration)
+- QicLink (core commercial claims system)
+- VBA (value-based administration claims system)
 
 > Note: Confirm the current system inventory and add/remove systems as discovery progresses.
 
