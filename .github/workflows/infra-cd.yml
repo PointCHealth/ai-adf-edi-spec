@@ -1,12 +1,7 @@
 name: Deploy Infrastructure
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'infra/bicep/**'
-      - 'infra/sql/**'
-      - 'env/*.parameters.json'
+  # Temporarily disable automatic deployments; manual dispatch only.
   workflow_dispatch:
     inputs:
       environment:

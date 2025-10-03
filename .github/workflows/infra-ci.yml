@@ -1,17 +1,8 @@
 name: IaC Parameter Validation
 
 on:
-  pull_request:
-    paths:
-      - 'env/*.parameters.json'
-      - 'infra/bicep/**'
-      - 'infra/sql/**'
-  push:
-    branches: [ main ]
-    paths:
-      - 'env/*.parameters.json'
-      - 'infra/bicep/**'
-      - 'infra/sql/**'
+  # Temporarily disable automatic validation runs; manual dispatch only.
+  workflow_dispatch:
 
 jobs:
   validate-parameters:
