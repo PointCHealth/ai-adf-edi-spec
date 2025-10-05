@@ -10,9 +10,9 @@ Defines the end-to-end operational flow, validation logic, metadata model, error
 |-------|-------------|------------------|
 | Trading Partner SFTP User | External partner uploading EDI files | Sends files to designated SFTP directory with agreed naming pattern |
 | Data Factory Managed Identity | Executes pipelines | Access Storage, Key Vault, writes metadata/logs |
-| Operations Engineer | Monitors, manages incidents | Reviews failures, triggers reprocess |
-| Data Steward / Governance | Ensures lineage and compliance | Reviews catalog, updates partner config |
-| Security / Compliance | Audits access, ensures policies | Reviews logs, approves retention / immutability |
+| Operations Automation Agent | Monitors, manages incidents | Agents triage failures and trigger reprocess workflows |
+| Data Governance Agent | Ensures lineage and compliance | Agents synchronize catalog metadata and update partner config |
+| Security Compliance Agent | Audits access, ensures policies | Agents evaluate logs and enforce retention / immutability guardrails |
 
 ## 3. Inbound File Specification
 
@@ -126,11 +126,11 @@ Metadata persisted in: (a) ADLS `metadata/ingestion/YYYY/MM/DD/*.json` (append-o
 1. Move (or copy+delete) failing file to quarantine path preserving original name.
 2. Append metadata record with `validationStatus=QUARANTINED`.
 3. Emit alert (Action Group -> email/Teams/ServiceNow).
-4. Operations triages; either delete permanently (per policy) or reprocess after correction.
+4. Operations automation agent triages; either delete permanently (per policy) or reprocess after correction.
 
 ## 10. Reprocessing Procedure
 
-- Trigger manual pipeline `pl_reprocess` with parameters: `originalBlobPath`, `force=true/false`.
+- Agents trigger pipeline `pl_reprocess` with parameters: `originalBlobPath`, `force=true/false`.
 - Pipeline fetches metadata record, validates that file exists in raw or quarantine.
 - If quarantine: copy back to staging temp, re-run validation sequence.
 - Update metadata with incremented `retryCount` and new status.
@@ -186,7 +186,7 @@ Dashboards: Workbook combining Log Analytics queries + Purview lineage visuals.
 ## 18. Operational Runbook References (See Ops Spec)
 
 - Quarantine triage
-- Reprocess manual trigger steps
+- Reprocess automation trigger steps
 - Adding a new partner
 
 ## 19. Routing Layer Sequence (Post-Validation)
@@ -230,7 +230,7 @@ Extend core ingestion to emit granular routing messages per ST transaction segme
 ### 19.4 Failure & Retry Logic
 
 - Transient Service Bus error: exponential backoff (250ms, 500ms, 1s, 2s, 4s) then fail.
-- On failure: log `routingPublishStatus=FAILED`, emit alert (High if >5 failures in 10m), do NOT block ingestion completion; downstream processing for that file is halted until manual retry via `func_router_dispatch` re-invocation.
+- On failure: log `routingPublishStatus=FAILED`, emit alert (High if >5 failures in 10m), do NOT block ingestion completion; downstream processing for that file pauses until the automation agent re-invokes `func_router_dispatch`.
 
 ### 19.5 Performance Targets
 
@@ -348,7 +348,7 @@ Cross-references the master transaction catalog (Architecture Spec Appendix A) t
 
 ### 25.1 Routing Data Minimization
 
-Routing layer enforces Appendix A.14 minimization. Requests to add member IDs, claim numbers, diagnosis codes, amounts, or benefit details to routing payloads require security review and design update.
+Routing layer enforces Appendix A.14 minimization. Requests to add member IDs, claim numbers, diagnosis codes, amounts, or benefit details to routing payloads trigger automated security policy evaluation and design update workflows.
 
 ### 25.2 Acknowledgment SLA Hooks
 

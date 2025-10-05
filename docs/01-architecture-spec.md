@@ -161,8 +161,8 @@ Reference `14-enterprise-scheduler-spec.md` for the detailed design, configurati
 ### Error Handling
 
 - Quarantine container for files failing structural or security validation
-- Dead-letter event concept: Events that cause repeated pipeline failure logged and flagged for manual intervention
-- Reprocessing: Manual or automated trigger referencing original blob path & metadata
+- Dead-letter event concept: Events that cause repeated pipeline failure logged and queued for agent-directed remediation
+- Reprocessing: Agent-managed trigger referencing original blob path & metadata
 
 ## 7. Logical Architecture Layers
 
@@ -646,7 +646,7 @@ Use this matrix to assess blast radius when modifying components:
 | **TA1 Generation Timing** | Deferred post-validation (< 5 min acceptable) | Allows asynchronous processing without impacting ingestion throughput; meets SLA | Doc 08 §7, Appendix B.3 |
 | **Routing Backbone** | Azure Service Bus Topics | Durable, ordered, filterable, DLQ isolation, proven at scale | Doc 01 §6, Doc 08 §3 |
 | **Destination System Coupling** | Loosely coupled via Service Bus subscriptions | Enables independent scaling, deployment, and architecture choices (event sourcing vs CRUD) | Doc 01 §6, Doc 08 §3.1 |
-| **Multi-Region DR** | Active-Passive with paired region | Cost-effective; RTO 2 hours acceptable; manual failover | Doc 07 §?, Appendix B.7 (pending) |
+| **Multi-Region DR** | Active-Passive with paired region | Cost-effective; RTO 2 hours acceptable; agent-directed failover | Doc 07 §?, Appendix B.7 (pending) |
 | **Purview Lineage** | ADF automatic lineage (built-in) | Sufficient for Phase 1; custom REST API calls deferred | Doc 01 §6, Doc 02 §6 |
 | **Event Grid vs Service Bus for Routing** | Service Bus (pending evaluation) | Ordering, filtering, DLQ required; Event Grid assessed for cost optimization | Doc 01 §6, Appendix B.8 (pending) |
 
@@ -656,8 +656,8 @@ Use this matrix to assess blast radius when modifying components:
 
 | Component | Primary Region | Secondary Region (Paired) | Failover Strategy |
 |-----------|----------------|---------------------------|-------------------|
-| **Storage (Raw/Outbound)** | East US 2 (active writes) | Central US (GRS read-only) | Manual failover trigger; promote secondary to read-write |
-| **Azure SQL (Control Numbers)** | East US 2 (active) | Central US (geo-replica read-only) | Manual failover; validate counter integrity post-failover |
+| **Storage (Raw/Outbound)** | East US 2 (active writes) | Central US (GRS read-only) | Agent-triggered failover; promote secondary to read-write |
+| **Azure SQL (Control Numbers)** | East US 2 (active) | Central US (geo-replica read-only) | Agent-triggered failover; validate counter integrity post-failover |
 | **Service Bus Namespace** | East US 2 (active) | Central US (standby namespace, no geo-DR in Standard) | Recreate subscriptions in secondary; redirect router Function |
 | **ADF** | East US 2 (active) | Central US (IaC redeploy) | Deploy ADF via Bicep to secondary; update triggers |
 | **Functions (Router, Orchestrator)** | East US 2 (active) | Central US (standby deployment) | Update Function App DNS/config to secondary region |
@@ -667,7 +667,7 @@ Use this matrix to assess blast radius when modifying components:
 **Failover Procedure**:
 
 1. **Detection**: Primary region outage detected via health probes (> 15 min sustained failure)
-2. **Decision**: Declare disaster (exec approval required for prod)
+2. **Decision**: Governance agent declares disaster state and coordinates promotion
 3. **Execution**:
    - Promote Storage GRS secondary to read-write (15-30 min)
    - Failover Azure SQL to geo-replica (< 5 min)

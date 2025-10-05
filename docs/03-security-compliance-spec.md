@@ -22,7 +22,7 @@ Defines mandatory security, privacy, and compliance controls (HIPAA-aligned) for
 | Metadata logs | Tampering | Loss of auditability | Append-only design + Log Analytics immutability retention policies |
 | Quarantine files | Malicious payload | Spread of malware | AV scanning, isolation container, no automatic downstream processing |
 | Service Bus routing topic | Unauthorized publish or subscribe | Poisoned routing events, data leakage | RBAC (Send/Listen separation), topic-level access via Managed Identity, private endpoints, namespace firewall |
-| Routing messages | Sensitive data inclusion | PHI leakage via events | Strict schema (envelope only), validation rejecting disallowed fields, code review guardrails |
+| Routing messages | Sensitive data inclusion | PHI leakage via events | Strict schema (envelope only), validation rejecting disallowed fields, automated policy guardrails |
 | Outbound staging container | Unauthorized modification | Altered acknowledgments / repudiation risk | Separate container + ACL, write restricted to orchestrator identity, checksum & hash logging |
 | Control number store | Tampering / replay | Incorrect acknowledgments & audit gaps | Optimistic concurrency, restricted RW access, integrity monitoring (hash of counter state), logging of increments |
 
@@ -95,7 +95,7 @@ Defines mandatory security, privacy, and compliance controls (HIPAA-aligned) for
 
 - Only store raw required EDI payload + technical metadata.
 - Avoid parsing PHI fields into metadata tables (store only envelope identifiers).
-- Routing messages exclude claim/member PHI; enforce via unit tests and code review checklist.
+- Routing messages exclude claim/member PHI; enforce via unit tests and automated policy checklist.
 - Outbound acknowledgments contain only standard X12 required segments; any enriched PHI returned must follow downstream governance (future scope).
 
 ## 8. Secrets & Key Management
@@ -153,7 +153,7 @@ Dashboards: ingestion latency, failure reasons, quarantine counts, security aler
 
 ## 12. Vulnerability & Patch Management
 
-- PaaS services auto-managed; review monthly for platform advisories.
+- PaaS services auto-managed; agents review monthly for platform advisories.
 - Custom Function code: integrate dependency scanning (Dependabot or equivalent) and SAST.
 
 ## 13. Incident Response
@@ -182,7 +182,7 @@ RPO: <= 15 minutes (raw zone resilience). RTO: <= 2 hours for ingestion path res
 
 | Control | Test Method | Frequency |
 |---------|-------------|-----------|
-| RBAC least privilege | Access review (AAD) | Quarterly |
+| RBAC least privilege | Automated access review (AAD) | Quarterly |
 | Key rotation | Drill / automated report | Quarterly |
 | Immutability policy | Attempt delete within retention | Annually |
 | Alerting coverage | Synthetic pipeline failure injection | Monthly |

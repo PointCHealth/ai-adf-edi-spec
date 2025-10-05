@@ -6,7 +6,7 @@ Provide a standardized, repeatable, audited approach for provisioning and updati
 
 ## 2. Scope
 
-Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factory, Event Grid Subscriptions, Function App (optional), Log Analytics, Purview, Monitoring artifacts (Action Groups, Alerts), Policies, Role Assignments. Excludes: Downstream analytics (Phase 2), manual partner key distribution.
+Includes: Resource Groups, Storage (landing + data lake), Key Vault, Data Factory, Event Grid Subscriptions, Function App (optional), Log Analytics, Purview, Monitoring artifacts (Action Groups, Alerts), Policies, Role Assignments. Excludes: Downstream analytics (Phase 2), partner-managed key distribution.
 
 ## 3. Technology Selection
 
@@ -64,10 +64,11 @@ Benefits over Service Principal secrets:
    AZURE_SUBSCRIPTION_ID     # Subscription ID
    ```
 
-1. **GitHub Environments** (with protection rules)
-   - `dev` - Auto-deploy on main branch
-   - `test` - Manual approval (1 reviewer)
-   - `prod` - Manual approval (2 reviewers, security team)
+**GitHub Environments** (with protection rules):
+
+- `dev` - Auto-deploy on main branch
+- `test` - Automated compliance gate (policy agents evaluate release bundle)
+- `prod` - Automated security gate (policy agents + runtime health checks)
 
 ### Workflow Triggers
 
@@ -75,7 +76,7 @@ Benefits over Service Principal secrets:
 |---------|----------|----------|
 | `pull_request` | Validation & what-if | infra-ci.yml, function-ci.yml |
 | `push: [main]` | Auto-deploy to dev | infra-cd.yml (dev job) |
-| `workflow_dispatch` | Manual deploy | All CD workflows |
+| `workflow_dispatch` | Agent-initiated deploy | All CD workflows |
 | `schedule: '0 2 * * *'` | Nightly drift check | drift-detection.yml |
 | `release: published` | Prod release | infra-cd.yml (prod job) |
 
@@ -153,11 +154,13 @@ graph LR
     C -->|No| D[Block Merge]
     C -->|Yes| E[Merge to main]
     E --> F[infra-cd.yml: dev]
-    F --> G[Integration Tests]
-    G --> H{Manual Approve?}
-    H -->|Yes| I[infra-cd.yml: test]
-    I --> J{Manual Approve?}
-    J -->|Yes| K[infra-cd.yml: prod]
+  F --> G[Integration Tests]
+  G --> H{Policy Gate Passed?}
+  H -->|No| D[Block Merge]
+  H -->|Yes| I[infra-cd.yml: test]
+  I --> J{Security Gate Passed?}
+  J -->|No| D
+  J -->|Yes| K[infra-cd.yml: prod]
 ```
 
 ### Detailed Stage Breakdown
@@ -195,18 +198,18 @@ graph LR
 - Verify routing message published (if routing enabled)
 - Check metadata in Log Analytics
 
-**4. Test Environment Deployment** (manual approval required)
+**4. Test Environment Deployment** (automated compliance gate)
 
-- GitHub Environment protection: 1 approver from data-engineering team
+- GitHub Environment protection: policy agents validate release bundle
 - Reuse compiled artifact from dev
 - `az deployment group what-if` (post as deployment comment)
 - Deploy with test parameters
 - Run integration tests
 
-**5. Production Deployment** (manual approval required)
+**5. Production Deployment** (automated security gate)
 
-- GitHub Environment protection: 2 approvers (security + platform lead)
-- Change management ticket required (validated via API or manual)
+- GitHub Environment protection: policy agents plus runtime telemetry checks
+- Change management ticket required (validated via API-driven agent)
 - `az deployment group what-if` with annotation
 - Deploy with prod parameters
 - Post-deployment validation
@@ -273,8 +276,8 @@ graph LR
 |------|-----------|
 | No direct edits in Test/Prod | Prevent drift |
 | Artifact immutability | Guarantees reproducibility |
-| Parameter file diff required for env differences | Explicit, reviewable variance |
-| Security review required for new public endpoints | Risk mitigation |
+| Parameter file diff required for env differences | Explicit, policy-auditable variance |
+| Automated security evaluation required for new public endpoints | Risk mitigation |
 
 ## 16. Observability Resources IaC
 
@@ -444,10 +447,10 @@ module sqlRoleAssignment '../modules/azure-sql-mi-role.bicep' = {
 - Post-deployment automation executes migration scripts (`/infra/sql/control-numbers/*.sql`) to create tables, sequences, and seed rows.
 - Managed identities (outbound orchestrator, maintenance functions) receive least-privilege roles (`db_datareader`, `db_datawriter`); no SQL logins stored in secrets.
 
-## 18. Governance & Approvals
+## 18. Governance & Policy Gates
 
-- Mandatory reviewers: Security, Data Platform lead for resource changes.
-- Automated check: Tag compliance, policy compliance summary comment on PR.
+- Enforcement agents: Security Compliance Agent and Data Platform Agent block merges until each policy evaluation succeeds.
+- Automated check: Tag compliance, policy compliance summary comment on PR with signed evaluation artifacts archived in the workspace.
 
 ## 19. Risks & Mitigations (IaC Focus)
 
