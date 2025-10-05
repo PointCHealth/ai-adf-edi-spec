@@ -121,11 +121,9 @@ This platform implements a **5-layer architecture** optimized for healthcare EDI
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [implementation-strategy/README.md](implementation-strategy/README.md) | **Ordered implementation playbooks** (1-10) | Step-by-step AI-assisted implementation prompts |
-| [implementation-strategy/01-tooling-and-credential-acquisition.md](implementation-strategy/01-tooling-and-credential-acquisition.md) | Azure setup prerequisites | Subscriptions, service principals, tools |
-| [implementation-strategy/04-infrastructure-bicep-plan.md](implementation-strategy/04-infrastructure-bicep-plan.md) | Bicep module development plan | Service Bus, Functions, Storage, Key Vault |
-| [implementation-strategy/06-application-service-implementation.md](implementation-strategy/06-application-service-implementation.md) | Function app development guide | Router, Outbound Orchestrator, testing |
-| [implementation-strategy/09-ci-cd-pipeline-automation.md](implementation-strategy/09-ci-cd-pipeline-automation.md) | Pipeline automation strategy | GitHub Actions deployment workflows |
+| [implementation-plan/00-implementation-overview.md](implementation-plan/00-implementation-overview.md) | **Master implementation roadmap** | Timeline, team structure, AI agent strategy |
+| [implementation-plan/01-infrastructure-projects.md](implementation-plan/01-infrastructure-projects.md) | Infrastructure project portfolio | Bicep initiatives, environment rollout, dependencies |
+| [implementation-plan/README.md](implementation-plan/README.md) | Azure Functions implementation guide | Router, mappers, connectors, testing & CI/CD |
 
 ### Partner Portal Specifications
 
@@ -189,7 +187,7 @@ Trading Partner Self-Service Portal (external-facing web application):
 1. **Understand the system**: Start with [AI_PROJECT_OVERVIEW.md](AI_PROJECT_OVERVIEW.md) for comprehensive context
 2. **Review architecture**: Read [docs/01-architecture-spec.md](docs/01-architecture-spec.md) for component overview
 3. **Explore CI/CD**: See [docs/04a-github-actions-implementation.md](docs/04a-github-actions-implementation.md) for production-ready workflows
-4. **Implementation path**: Follow numbered guides in [implementation-strategy/](implementation-strategy/)
+4. **Implementation path**: Follow numbered guides in [implementation-plan/](implementation-plan/)
 
 ### For Operators
 

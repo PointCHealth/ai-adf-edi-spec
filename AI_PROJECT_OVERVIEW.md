@@ -97,7 +97,8 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 Validation Command (local): `npx ajv validate -s ./config/partners/partners.schema.json -d ./config/partners/partners.sample.json`
 
 **Partner Configuration Schema Highlights**:
-- `partnerType`: "EXTERNAL" | "INTERNAL" 
+
+- `partnerType`: "EXTERNAL" | "INTERNAL"
 - `dataFlow.direction`: "INBOUND" | "OUTBOUND" | "BIDIRECTIONAL"
 - `endpoint.type`: "SFTP" | "SERVICE_BUS" | "REST_API" | "DATABASE" with protocol-specific configuration
 - `integration.adapterType`: "EVENT_SOURCING" | "CRUD" | "CUSTOM" with optional customAdapterConfig

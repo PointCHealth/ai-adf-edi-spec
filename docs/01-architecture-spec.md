@@ -79,12 +79,14 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 The core ingestion architecture is extended by a Routing Layer that decouples raw file validation/persistence from transactional processing and outbound distribution. After a file is validated and the immutable raw copy is persisted, a lightweight routing function (or ADF activity invoking a Function) parses only the envelope headers needed to emit one routing message per ST transaction. These messages are published to a Service Bus Topic (e.g., `edi-routing`) with filterable application properties (`transactionSet`, `partnerCode`, `priority`, `direction`).
 
 **All trading partners** (both external partners and internal systems like eligibility, claims, enrollment management, remittance) are configured with integration endpoints and adapters. Each trading partner:
+
 - Has a unique partner code and configuration profile
 - Connects via configured endpoints (SFTP, REST API, database, message queue)
 - May send data to the platform (inbound), receive data from the platform (outbound), or both (bidirectional)
 - Receives data through partner-specific integration adapters that handle format transformation and protocol adaptation
 
 For example, the Enrollment Management system is configured as an internal trading partner that:
+
 - Receives inbound 834 transactions via Service Bus subscription
 - Implements event sourcing internally for transaction processing
 - Sends outcome signals back through the platform for acknowledgment generation
@@ -503,81 +505,123 @@ This matrix clarifies which architectural components handle each transaction typ
 #### B.4.1 837 Claim (Full Lifecycle Example)
 
 ```text
+
 1. Partner SFTP Upload (837 file)
+
    ↓
+
 2. Core Platform Ingestion (ADF)
    - Validate ISA/IEA envelope
    - Persist raw file (immutable)
    - Extract metadata
+
    ↓
+
 3. Core Technical Ack Generation
    - Generate TA1 if structural errors (defer OK)
    - Generate 999 for syntax validation
+
    ↓
+
 4. Router Function
    - Parse ST segments (claims)
    - Publish routing messages to Service Bus (edi-routing)
+
    ↓
+
 5. Claims Processing (Destination System)
    - Subscribe to Service Bus (filter: transactionSet = '837%')
    - Process claim business logic
    - Write outcome signal to staging (accepted/rejected/pended)
+
    ↓
+
 6. Outbound Orchestrator
    - Poll/event-trigger from staging
    - Aggregate claim outcomes
    - Generate 277CA (claim acknowledgment)
    - Acquire control numbers from Azure SQL
    - Persist 277CA file to outbound storage
+
    ↓
+
 7. Partner Retrieval (SFTP)
    - Partner downloads TA1, 999, 277CA from outbound path
+
 ```
 
 #### B.4.2 270/271 Eligibility (Fast Path Example)
 
 ```text
+
 1. Partner SFTP Upload (270 inquiry)
+
    ↓
+
 2. Core Platform Ingestion (ADF) - validate & persist
+
    ↓
+
 3. Core Technical Ack (999 - minimal delay)
+
    ↓
+
 4. Router Function - publish to edi-routing
+
    ↓
+
 5. Eligibility Service (Destination System)
    - Subscribe (filter: transactionSet = '270')
    - Determine eligibility
    - Write outcome signal (eligible/not eligible/pended)
+
    ↓
+
 6. Outbound Orchestrator
    - Generate 271 response (< 5 min target)
    - Persist to outbound storage
+
    ↓
+
 7. Partner Retrieval (999 + 271)
+
 ```
 
 #### B.4.3 834 Enrollment (Event Sourcing Example)
 
 ```text
+
 1. Partner SFTP Upload (834 batch)
+
    ↓
+
 2. Core Platform Ingestion - validate & persist raw
+
    ↓
+
 3. Core Technical Ack (TA1 if needed, 999)
+
    ↓
+
 4. Router Function - publish to edi-routing
+
    ↓
+
 5. Enrollment Management (Event Sourcing Destination System)
    - Subscribe (filter: transactionSet = '834')
    - Append domain events (MemberEnrolled, CoverageChanged, etc.)
    - Build projections (current enrollment state)
    - Write outcome signal (processed count, errors)
+
    ↓
+
 6. Outbound Orchestrator
    - Optional: Generate 824 if application-level rejects
+
    ↓
+
 7. Partner Retrieval (TA1, 999, optional 824)
+
 ```
 
 ### B.5 Component Modification Impact Analysis

@@ -20,6 +20,7 @@
 - Partner integration follows the same loose coupling model as external partners, using standardized routing messages and outcome signals
 
 **Configuration as Trading Partner:**
+
 - Partner Code: `INTERNAL-ENROLLMENT`
 - Partner Type: `INTERNAL`
 - Direction: `INBOUND` (receives 834 transactions)
@@ -1089,14 +1090,18 @@ ORDER BY EventSequence;
 **Standard Flow:**
 
 ```powershell
+
 # 1. Upload file
+
 POST /api/enrollment/files
 Content-Type: multipart/form-data
 
 # 2. Monitor processing
+
 GET /api/enrollment/batches/{batchId}/status
 
 # 3. Verify completion
+
 GET /api/enrollment/batches/{batchId}/summary
 ```
 
@@ -1495,4 +1500,4 @@ dependencies
 - [01-architecture-spec.md](./01-architecture-spec.md)
 - [02-data-flow-spec.md](./02-data-flow-spec.md)
 - [06-operations-spec.md](./06-operations-spec.md)
-- [EnrollmentTracking.sql](../test_implementation/EnrollmentTracking.sql)
+- `EnrollmentTracking.sql` (pending publication in `infra/sql` project)

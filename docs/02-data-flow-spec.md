@@ -253,6 +253,7 @@ Each trading partner (configured with unique partner code and endpoint) listens 
 5. On fatal parse error, abandon / dead-letter message; metrics increment `RoutingDLQCount`.
 
 **Trading Partner Types:**
+
 - **External Partners**: Traditional external organizations (payers, providers, clearinghouses) connected via SFTP/AS2/API
 - **Internal Partners**: Internal systems configured as partners with dedicated endpoints:
   - Eligibility Service Partner (270/271 processing)
