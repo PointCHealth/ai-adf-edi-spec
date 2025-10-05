@@ -242,7 +242,20 @@ AckAssembly_CL
 
 - Review failed workflow runs in Actions tab
 - Check deployment queue for blocked environments
-- Verify scheduled workflows executed (drift detection, ADF export)
+- Verify scheduled workflows executed:
+  - Infrastructure drift detection (2 AM UTC)
+  - Cost monitoring (8 AM UTC)
+  - Function health checks (every 15 min)
+- Review monitoring workflow alerts and issues
+
+**Scheduled Workflow Summary:**
+
+| Workflow | Schedule | Frequency | Purpose |
+|----------|----------|-----------|--------|
+| infra-drift-detection.yml | `0 2 * * *` | Daily 2 AM UTC | Detect infrastructure drift |
+| cost-monitoring.yml | `0 8 * * *` | Daily 8 AM UTC | Budget tracking and alerts |
+| function-health-check.yml | `*/15 * * * *` | Every 15 minutes | Function app health monitoring |
+| security-audit.yml | `0 3 * * 1` | Weekly Monday 3 AM UTC | Security and HIPAA compliance |
 
 **Metrics to Track:**
 
@@ -252,6 +265,8 @@ AckAssembly_CL
 | Average deployment duration | < 15 min | > 25 min |
 | Queue time (test/prod) | < 2 hours | > 4 hours |
 | What-if execution time | < 5 min | > 10 min |
+| Health check response time | < 5 sec | > 10 sec |
+| Cost query execution time | < 3 min | > 5 min |
 
 **Access Workflow Logs:**
 

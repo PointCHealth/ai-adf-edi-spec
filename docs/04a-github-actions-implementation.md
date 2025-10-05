@@ -75,13 +75,15 @@ ai-adf-edi-spec/
 │   ├── workflows/
 │   │   ├── infra-ci.yml
 │   │   ├── infra-cd.yml
+│   │   ├── infra-drift-detection.yml
 │   │   ├── function-ci.yml
 │   │   ├── function-cd.yml
+│   │   ├── function-health-check.yml
+│   │   ├── cost-monitoring.yml
+│   │   ├── security-audit.yml
 │   │   ├── adf-export.yml
 │   │   ├── adf-deploy.yml
-│   │   ├── config-validation.yml
-│   │   ├── drift-detection.yml
-│   │   └── security-scan.yml
+│   │   └── config-validation.yml
 │   ├── actions/
 │   │   ├── azure-login/
 │   │   │   └── action.yml
@@ -969,6 +971,79 @@ jobs:
               });
             }
 ```
+
+### 5.5 Cost Monitoring Workflow
+
+**File:** `.github/workflows/cost-monitoring.yml`
+
+**Purpose:** Daily Azure cost tracking and budget alerting
+
+**Triggers:** `schedule: '0 8 * * *'` (8 AM UTC daily), `workflow_dispatch`
+
+**Key Features:**
+- Multi-environment cost tracking (dev, test, prod)
+- Budget threshold alerts (80%, 90%, 100%, 110%)
+- Cost projections and anomaly detection
+- Automatic GitHub issue creation for budget overruns
+- Teams notifications
+- Top 10 expensive resources per environment
+
+**Budget Thresholds:**
+- Dev: $500/month
+- Test: $1,000/month
+- Prod: $5,000/month
+
+**Jobs:**
+1. `fetch-cost-data` - Query Azure Cost Management API
+2. `analyze-spending` - Calculate budget percentages and projections
+3. `alert-on-anomalies` - Create issues and send Teams notifications
+4. `cost-summary` - Post workflow summary
+
+### 5.6 Security Audit Workflow
+
+**File:** `.github/workflows/security-audit.yml`
+
+**Purpose:** Weekly comprehensive security scanning and HIPAA compliance validation
+
+**Triggers:** `schedule: '0 3 * * 1'` (Monday 3 AM UTC), `pull_request`, `workflow_dispatch`
+
+**Key Features:**
+- IaC security scanning (Checkov + Microsoft Security DevOps)
+- Application code security (CodeQL + .NET analyzers)
+- Dependency vulnerability scanning
+- HIPAA compliance validation (10 requirements)
+- SARIF upload to GitHub Security tab
+- Automatic GitHub issue creation for critical findings
+
+**Jobs:**
+1. `scan-infrastructure` - Bicep template security analysis
+2. `scan-application-code` - C# code security scanning
+3. `scan-dependencies` - NuGet package vulnerability detection
+4. `compliance-check` - HIPAA compliance validation
+5. `report-findings` - Aggregate results and create issues
+6. `security-summary` - Post workflow summary
+
+### 5.7 Function Health Check Workflow
+
+**File:** `.github/workflows/function-health-check.yml`
+
+**Purpose:** Proactive health monitoring of Azure Functions
+
+**Triggers:** `schedule: '*/15 * * * *'` (every 15 minutes), callable workflow
+
+**Key Features:**
+- Health endpoint testing (all 7 functions × 3 environments)
+- Application Insights integration
+- Automatic GitHub issue creation for production failures
+- Synthetic transaction testing
+- Response time validation (<5 seconds)
+
+**Jobs:**
+1. `health-check-dev` - Dev environment health checks
+2. `health-check-test` - Test environment health checks
+3. `health-check-prod` - Prod environment health checks (critical)
+4. `create-health-issue` - Auto-create/update GitHub issues
+5. `health-summary` - Post workflow summary
 
 ---
 
