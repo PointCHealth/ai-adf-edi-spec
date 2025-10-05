@@ -1,0 +1,62 @@
+# Dependabot configuration for edi-data-platform
+# This repository contains database schemas, migrations, and data pipeline code
+
+version: 2
+
+updates:
+  # NuGet packages for SQL DACPAC projects and .NET tooling
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "02:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "data-platform"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+    # Group related packages
+    groups:
+      microsoft-data:
+        patterns:
+          - "Microsoft.Data.*"
+          - "Microsoft.SqlServer.*"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "Moq"
+          - "FluentAssertions"
+    ignore:
+      # Ignore major version updates for manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"

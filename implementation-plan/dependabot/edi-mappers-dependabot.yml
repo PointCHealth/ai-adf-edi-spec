@@ -1,0 +1,62 @@
+# Dependabot configuration for edi-mappers
+# This repository contains EDI mapping functions and transformation logic
+
+version: 2
+
+updates:
+  # NuGet packages for mapper functions and libraries
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "02:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "mappers"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+    # Group related packages
+    groups:
+      azure-functions:
+        patterns:
+          - "Microsoft.Azure.Functions.*"
+          - "Microsoft.Azure.WebJobs.*"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "Moq"
+          - "FluentAssertions"
+    ignore:
+      # Ignore major version updates for manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"

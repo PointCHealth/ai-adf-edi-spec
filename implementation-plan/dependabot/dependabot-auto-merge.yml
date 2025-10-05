@@ -1,0 +1,155 @@
+name: Dependabot Auto-Merge
+
+# This workflow automatically approves and merges low-risk Dependabot PRs
+# Low-risk = patch and minor updates for non-major dependencies
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-approve-and-merge:
+    name: Auto-approve and merge low-risk updates
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    
+    steps:
+      - name: Get Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if update is low-risk
+        id: check-risk
+        run: |
+          UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
+          PACKAGE_NAME="${{ steps.metadata.outputs.dependency-names }}"
+          
+          echo "Update type: $UPDATE_TYPE"
+          echo "Package: $PACKAGE_NAME"
+          
+          # Define low-risk criteria
+          LOW_RISK=false
+          
+          # Patch updates are always low-risk
+          if [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]]; then
+            LOW_RISK=true
+            echo "✅ Low-risk: Patch update"
+          fi
+          
+          # Minor updates for non-critical packages
+          if [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+            # Check if it's a testing or development dependency
+            if [[ "$PACKAGE_NAME" =~ ^(xunit|Moq|FluentAssertions|coverlet) ]]; then
+              LOW_RISK=true
+              echo "✅ Low-risk: Minor update for test dependency"
+            fi
+            
+            # GitHub Actions minor updates are usually safe
+            if [[ "${{ steps.metadata.outputs.package-ecosystem }}" == "github-actions" ]]; then
+              LOW_RISK=true
+              echo "✅ Low-risk: Minor update for GitHub Actions"
+            fi
+          fi
+          
+          echo "low_risk=$LOW_RISK" >> $GITHUB_OUTPUT
+
+      - name: Approve PR
+        if: steps.check-risk.outputs.low_risk == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              event: 'APPROVE',
+              body: '✅ Auto-approved by Dependabot workflow (low-risk update)'
+            });
+            console.log('✅ PR approved');
+
+      - name: Enable auto-merge
+        if: steps.check-risk.outputs.low_risk == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.pulls.updateBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number
+              });
+              console.log('✅ Branch updated with base branch');
+            } catch (error) {
+              console.log('ℹ️  Branch already up to date or cannot be updated');
+            }
+            
+            // Enable auto-merge if available
+            try {
+              await github.graphql(`
+                mutation($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(input: {
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
+                  }) {
+                    pullRequest {
+                      number
+                      autoMergeRequest {
+                        enabledAt
+                      }
+                    }
+                  }
+                }
+              `, {
+                pullRequestId: context.payload.pull_request.node_id
+              });
+              console.log('✅ Auto-merge enabled');
+            } catch (error) {
+              console.log('⚠️  Could not enable auto-merge:', error.message);
+              console.log('ℹ️  This may require branch protection rules to allow auto-merge');
+            }
+
+      - name: Comment on high-risk PR
+        if: steps.check-risk.outputs.low_risk == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `⚠️ **Manual Review Required**
+              
+              This Dependabot PR contains a **${{ steps.metadata.outputs.update-type }}** update that requires manual review.
+              
+              **Package**: ${{ steps.metadata.outputs.dependency-names }}
+              **Update Type**: ${{ steps.metadata.outputs.update-type }}
+              
+              Please review the changes carefully before merging.
+              
+              ---
+              *This comment was automatically generated by the Dependabot Auto-Merge workflow.*`
+            });
+            console.log('ℹ️  Commented on high-risk PR');
+
+      - name: Add labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isLowRisk = '${{ steps.check-risk.outputs.low_risk }}' === 'true';
+            const labels = isLowRisk 
+              ? ['dependencies', 'auto-merge'] 
+              : ['dependencies', 'manual-review'];
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: labels
+            });
+            console.log(`✅ Added labels: ${labels.join(', ')}`);

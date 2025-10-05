@@ -1,0 +1,88 @@
+# Dependabot configuration for edi-platform-core
+# This repository contains core platform infrastructure, shared libraries, and Azure Functions
+
+version: 2
+
+updates:
+  # NuGet packages for .NET projects and Azure Functions
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "nuget"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+    # Group Azure SDK packages together
+    groups:
+      azure-sdk:
+        patterns:
+          - "Azure.*"
+          - "Microsoft.Azure.*"
+      azure-functions:
+        patterns:
+          - "Microsoft.Azure.Functions.*"
+          - "Microsoft.Azure.WebJobs.*"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "Moq"
+          - "FluentAssertions"
+          - "coverlet.*"
+    ignore:
+      # Ignore major version updates for manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+
+  # npm packages for any tooling or build scripts
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "02:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "edi-platform-team"
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+    ignore:
+      # Ignore major version updates for manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
