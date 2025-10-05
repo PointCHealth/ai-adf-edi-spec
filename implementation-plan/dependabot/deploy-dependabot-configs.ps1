@@ -135,7 +135,7 @@ if ($CommitAndPush) {
     Write-Host "Files copied but not committed. Run with -CommitAndPush to commit and push." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "To commit and push manually:" -ForegroundColor Cyan
-    Write-Host "  cd <repo-path>" -ForegroundColor Gray
+    Write-Host "  cd repo-path" -ForegroundColor Gray
     Write-Host "  git add .github/dependabot.yml" -ForegroundColor Gray
     Write-Host "  git commit -m 'chore: Add Dependabot configuration'" -ForegroundColor Gray
     Write-Host "  git push origin main" -ForegroundColor Gray
@@ -144,8 +144,8 @@ if ($CommitAndPush) {
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Cyan
 Write-Host "1. Navigate to each repository on GitHub" -ForegroundColor Gray
-Write-Host "2. Go to Insights → Dependency graph → Dependabot" -ForegroundColor Gray
-Write-Host "3. Verify 'Dependabot is active' message appears" -ForegroundColor Gray
+Write-Host "2. Go to Insights -> Dependency graph -> Dependabot" -ForegroundColor Gray
+Write-Host "3. Verify Dependabot is active message appears" -ForegroundColor Gray
 Write-Host "4. Wait for initial dependency update PRs (may take up to 1 hour)" -ForegroundColor Gray
 Write-Host ""
 

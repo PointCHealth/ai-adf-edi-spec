@@ -202,8 +202,7 @@ Created three parameter files for environment-specific deployments:
 4. **GitHub Secrets Configured** (for OIDC):
    - AZURE_CLIENT_ID
    - AZURE_TENANT_ID
-   - AZURE_SUBSCRIPTION_ID_DEV
-   - AZURE_SUBSCRIPTION_ID_TEST
+   - AZURE_SUBSCRIPTION_ID_DEV (used for dev and test environments)
    - AZURE_SUBSCRIPTION_ID_PROD
 
 5. **SQL Admin Password** stored in Key Vault or GitHub Secrets
@@ -224,13 +223,15 @@ az bicep build --file main.bicep
 ### Step 2: Create Resource Groups
 
 ```powershell
-# Development
+# Development (EDI-DEV subscription)
+az account set --subscription "EDI-DEV"
 az group create --name rg-edi-dev-eastus2 --location eastus2 --tags env=dev owner=data-platform
 
-# Test
+# Test (EDI-DEV subscription, separate resource group)
 az group create --name rg-edi-test-eastus2 --location eastus2 --tags env=test owner=data-platform
 
-# Production
+# Production (EDI-PROD subscription)
+az account set --subscription "EDI-PROD"
 az group create --name rg-edi-prod-eastus2 --location eastus2 --tags env=prod owner=data-platform
 ```
 

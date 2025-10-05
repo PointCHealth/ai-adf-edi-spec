@@ -251,9 +251,9 @@ EOF
 
 | Identity | Scope | Role | Reason |
 |----------|-------|------|--------|
-| github-actions-edi-dev | rg-edi-dev-* | Contributor | Full IaC deployment |
+| github-actions-edi-dev | rg-edi-dev-* | Contributor | Full IaC deployment (dev environment) |
+| github-actions-edi-dev | rg-edi-test-* | Contributor | Full IaC deployment (test environment) |
 | github-actions-edi-dev | Key Vault (dev) | Key Vault Secrets Officer | Seed initial secrets |
-| github-actions-edi-test | rg-edi-test-* | Contributor | Full IaC deployment |
 | github-actions-edi-prod | rg-edi-prod-* | Contributor | Full IaC deployment |
 | github-actions-edi-prod | Subscription | Reader | Cost queries, policy checks |
 
@@ -276,7 +276,8 @@ Navigate to **Settings → Secrets and variables → Actions**:
 ```text
 AZURE_CLIENT_ID          = <app-id-from-step-1>
 AZURE_TENANT_ID          = <tenant-id>
-AZURE_SUBSCRIPTION_ID    = <subscription-id>
+AZURE_SUBSCRIPTION_ID_DEV  = <dev-subscription-id>  # Used for dev and test environments
+AZURE_SUBSCRIPTION_ID_PROD = <prod-subscription-id> # Used for prod environment
 ```
 
 **Environment Secrets** (if using different apps per env):
@@ -299,9 +300,9 @@ TEAMS_WEBHOOK_URL        = <teams-channel-webhook>
 **Repository Variables** (non-sensitive):
 
 ```text
-DEV_RESOURCE_GROUP       = rg-edi-dev-eastus2
-TEST_RESOURCE_GROUP      = rg-edi-test-eastus2
-PROD_RESOURCE_GROUP      = rg-edi-prod-eastus2
+DEV_RESOURCE_GROUP       = rg-edi-dev-eastus2   # In EDI-DEV subscription
+TEST_RESOURCE_GROUP      = rg-edi-test-eastus2  # In EDI-DEV subscription
+PROD_RESOURCE_GROUP      = rg-edi-prod-eastus2  # In EDI-PROD subscription
 AZURE_LOCATION           = eastus2
 ```
 

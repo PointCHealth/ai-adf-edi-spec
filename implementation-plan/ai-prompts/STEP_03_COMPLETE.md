@@ -143,9 +143,8 @@ gh variable get AZURE_LOCATION --repo {GITHUB_ORG}/edi-platform-core
 
 1. **Configure GitHub Secrets** (sensitive data):
    - AZURE_CREDENTIALS
-   - AZURE_SUBSCRIPTION_ID_DEV
-   - AZURE_SUBSCRIPTION_ID_TEST
-   - AZURE_SUBSCRIPTION_ID_PROD
+   - AZURE_SUBSCRIPTION_ID_DEV (used for dev and test environments)
+   - AZURE_SUBSCRIPTION_ID_PROD (used for prod environment)
    - SQL_ADMIN_PASSWORD
 
 2. **Create Service Principal**:

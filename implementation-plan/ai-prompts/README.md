@@ -152,7 +152,9 @@ echo "AZURE_SUBSCRIPTION_ID_PROD: 85aa9a59-7b1c-49d2-84ba-0640040bc097"
 
 **Prerequisites:**
 - Azure subscription owner or admin role
-- Resource groups already created (`rg-edi-dev-eastus2`, `rg-edi-test-eastus2`, `rg-edi-prod-eastus2`)
+- Resource groups already created:
+  - EDI-DEV subscription: `rg-edi-dev-eastus2`, `rg-edi-test-eastus2`
+  - EDI-PROD subscription: `rg-edi-prod-eastus2`
 - Azure CLI installed and authenticated
 
 **Repeat for:** dev, test, and prod environments
@@ -178,6 +180,7 @@ $tags = @{
 
 # Create resource groups for each environment
 az group create --name "rg-edi-dev-eastus2" --location $location --tags $tags
+# Test environment (same EDI-DEV subscription, different resource group)
 az group create --name "rg-edi-test-eastus2" --location $location --tags $tags
 az group create --name "rg-edi-prod-eastus2" --location $location --tags $tags
 ```
@@ -205,7 +208,7 @@ az group create --name "rg-edi-prod-eastus2" --location $location --tags $tags
 |------------|-------|--------|
 | `AZURE_CLIENT_ID` | From step 2.1 output | App Registration |
 | `AZURE_TENANT_ID` | `76888a14-162d-4764-8e6f-c5a34addbd87` | Azure AD |
-| `AZURE_SUBSCRIPTION_ID_DEV` | `0f02cf19-be55-4aab-983b-951e84910121` | EDI-DEV Subscription |
+| `AZURE_SUBSCRIPTION_ID_DEV` | `0f02cf19-be55-4aab-983b-951e84910121` | EDI-DEV Subscription (dev + test resource groups) |
 | `AZURE_SUBSCRIPTION_ID_PROD` | `85aa9a59-7b1c-49d2-84ba-0640040bc097` | EDI-PROD Subscription |
 
 **Option B: Via GitHub CLI**

@@ -61,7 +61,8 @@ Benefits over Service Principal secrets:
   ```text
    AZURE_CLIENT_ID           # Application (client) ID
    AZURE_TENANT_ID           # Directory (tenant) ID
-   AZURE_SUBSCRIPTION_ID     # Subscription ID
+   AZURE_SUBSCRIPTION_ID_DEV  # Used for dev and test environments (EDI-DEV subscription)
+   AZURE_SUBSCRIPTION_ID_PROD # Used for prod environment (EDI-PROD subscription)
    ```
 
 **GitHub Environments** (with protection rules):
@@ -104,9 +105,9 @@ Benefits over Service Principal secrets:
       purview.bicep
       policy.bicep
 /env
-  dev.parameters.json
-  test.parameters.json
-  prod.parameters.json
+  dev.parameters.json      # EDI-DEV subscription, rg-edi-dev-eastus2
+  test.parameters.json     # EDI-DEV subscription, rg-edi-test-eastus2
+  prod.parameters.json     # EDI-PROD subscription, rg-edi-prod-eastus2
 /pipelines
   adf_export_pipeline.yml
   infra_deploy.yml
