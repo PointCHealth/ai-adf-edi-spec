@@ -98,7 +98,7 @@ Requirements:
 ## 3. Function App Module (modules/function-app.bicep)
 
 Requirements:
-- Runtime: .NET 8 Isolated
+- Runtime: .NET 9 Isolated
 - Plan: Premium (EP1 for dev, EP2 for test/prod) - supports VNet integration
 - Enable: Managed Identity (System-assigned)
 - Enable: Application Insights integration

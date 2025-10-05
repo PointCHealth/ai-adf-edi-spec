@@ -1140,7 +1140,7 @@ Sections:
 
 **Development Standards**:
 
-- **Language**: C# 12+ (.NET 8)
+- **Language**: C# 13+ (.NET 9)
 - **Function Runtime**: Azure Functions v4 (isolated worker model)
 - **Authentication**: Managed Identity for all Azure resources
 - **Configuration**: Azure App Configuration for runtime settings

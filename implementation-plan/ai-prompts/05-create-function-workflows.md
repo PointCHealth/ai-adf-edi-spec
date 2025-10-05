@@ -15,9 +15,9 @@ Create GitHub Actions workflows for building, testing, and deploying Azure Funct
 I need you to create comprehensive GitHub Actions workflows for Azure Functions CI/CD pipeline.
 
 Context:
-- Platform: Azure Functions .NET 8 Isolated
+- Platform: Azure Functions .NET 9 Isolated
 - Functions: InboundRouter, OutboundOrchestrator, X12Parser, MapperEngine, ControlNumberGenerator, FileArchiver, NotificationService
-- Build: .NET SDK 8.0
+- Build: .NET SDK 9.0
 - Testing: xUnit with code coverage
 - Deployment: Zero-downtime using deployment slots
 - Environments: dev (auto), test (approval), prod (strict approval)

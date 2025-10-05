@@ -184,15 +184,15 @@ graph TB
 | `/infra/routing` | Bicep | 90% | Path-based trigger |
 | `/infra/observability` | Bicep | 85% | Path-based trigger |
 | `/adf/pipelines` | ADF JSON | 80% | Path-based trigger |
-| `/functions/router` | C# .NET 8 | 85% | Path-based trigger |
-| `/functions/mappers/*` | C# .NET 8 | 85% | Path-based trigger |
-| `/functions/connectors/*` | C# .NET 8 | 85% | Path-based trigger |
-| `/functions/scheduler` | C# .NET 8 | 85% | Path-based trigger |
+| `/functions/router` | C# .NET 9 | 85% | Path-based trigger |
+| `/functions/mappers/*` | C# .NET 9 | 85% | Path-based trigger |
+| `/functions/connectors/*` | C# .NET 9 | 85% | Path-based trigger |
+| `/functions/scheduler` | C# .NET 9 | 85% | Path-based trigger |
 | `/sql/controlnumbers` | SQL DACPAC | 75% | Path-based trigger |
 | `/sql/enrollment-eventstore` | SQL DACPAC | 75% | Path-based trigger |
 | `/shared/libraries` | C# NuGet | 85% AI-maintained | Version bump trigger |
 | `/config` | JSON Schema | 60% | Validation on commit |
-| `/tests` | C# .NET 8 | 90% | On every commit |
+| `/tests` | C# .NET 9 | 90% | On every commit |
 | `/docs` | Markdown | 80% AI-maintained | Auto-updated |
 
 **Total**: 1 repository with 14 workspaces
@@ -522,7 +522,7 @@ Weeks 17-18: Production Hardening (Agent-driven security audit with automated ev
 
 - Functional: [Business logic, data transformations]
 - Non-Functional: [Performance, security, HIPAA compliance]
-- Technology: [C# .NET 8, Azure Functions, specific libraries]
+- Technology: [C# .NET 9, Azure Functions, specific libraries]
 
 # Reference Materials
 
@@ -549,7 +549,7 @@ Weeks 17-18: Production Hardening (Agent-driven security audit with automated ev
 **Example Prompt** (Router Function):
 
 ```markdown
-Generate an Azure Function (C# .NET 8 isolated worker) that:
+Generate an Azure Function (C# .NET 9 isolated worker) that:
 
 **Context**: Part of Healthcare EDI platform. Receives HTTP POST after file lands in raw zone.
 

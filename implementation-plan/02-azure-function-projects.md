@@ -1,4 +1,4 @@
-# Azure Function Projects (C# .NET 8)
+# Azure Function Projects (C# .NET 9)
 
 **Document Version:** 1.0  
 **Last Updated:** October 4, 2025  
