@@ -1,0 +1,95 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "vnetAddressPrefix": {
+      "value": "10.0.0.0/16"
+    },
+    "functionSubnetPrefix": {
+      "value": "10.0.1.0/24"
+    },
+    "privateEndpointSubnetPrefix": {
+      "value": "10.0.2.0/24"
+    },
+    "dataFactorySubnetPrefix": {
+      "value": "10.0.3.0/24"
+    },
+    "appGatewaySubnetPrefix": {
+      "value": "10.0.4.0/24"
+    },
+    "storageAccountSku": {
+      "value": "Standard_LRS"
+    },
+    "storageSoftDeleteRetentionDays": {
+      "value": 7
+    },
+    "sqlAdministratorLogin": {
+      "value": "sqladmin"
+    },
+    "sqlAdministratorLoginPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/{subscription-id}/resourceGroups/rg-edi-dev-eastus2/providers/Microsoft.KeyVault/vaults/kv-edi-dev-eus2"
+        },
+        "secretName": "sql-admin-password"
+      }
+    },
+    "elasticPoolSku": {
+      "value": "BasicPool"
+    },
+    "elasticPoolCapacity": {
+      "value": 50
+    },
+    "elasticPoolMaxSizeBytes": {
+      "value": 5368709120
+    },
+    "perDatabaseMinCapacity": {
+      "value": 0
+    },
+    "perDatabaseMaxCapacity": {
+      "value": 5
+    },
+    "serviceBusSku": {
+      "value": "Standard"
+    },
+    "serviceBusCapacity": {
+      "value": 1
+    },
+    "serviceBusZoneRedundant": {
+      "value": false
+    },
+    "functionAppSku": {
+      "value": "EP1"
+    },
+    "functionAppMinInstances": {
+      "value": 1
+    },
+    "functionAppMaxInstances": {
+      "value": 3
+    },
+    "keyVaultSku": {
+      "value": "standard"
+    },
+    "enablePurgeProtection": {
+      "value": false
+    },
+    "enablePrivateEndpoints": {
+      "value": false
+    },
+    "enableDdosProtection": {
+      "value": false
+    },
+    "allowedIpAddresses": {
+      "value": []
+    },
+    "logAnalyticsRetentionInDays": {
+      "value": 30
+    }
+  }
+}

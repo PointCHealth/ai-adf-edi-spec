@@ -1,0 +1,95 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "test"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "vnetAddressPrefix": {
+      "value": "10.1.0.0/16"
+    },
+    "functionSubnetPrefix": {
+      "value": "10.1.1.0/24"
+    },
+    "privateEndpointSubnetPrefix": {
+      "value": "10.1.2.0/24"
+    },
+    "dataFactorySubnetPrefix": {
+      "value": "10.1.3.0/24"
+    },
+    "appGatewaySubnetPrefix": {
+      "value": "10.1.4.0/24"
+    },
+    "storageAccountSku": {
+      "value": "Standard_GRS"
+    },
+    "storageSoftDeleteRetentionDays": {
+      "value": 14
+    },
+    "sqlAdministratorLogin": {
+      "value": "sqladmin"
+    },
+    "sqlAdministratorLoginPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/{subscription-id}/resourceGroups/rg-edi-test-eastus2/providers/Microsoft.KeyVault/vaults/kv-edi-test-eus2"
+        },
+        "secretName": "sql-admin-password"
+      }
+    },
+    "elasticPoolSku": {
+      "value": "StandardPool"
+    },
+    "elasticPoolCapacity": {
+      "value": 100
+    },
+    "elasticPoolMaxSizeBytes": {
+      "value": 10737418240
+    },
+    "perDatabaseMinCapacity": {
+      "value": 0
+    },
+    "perDatabaseMaxCapacity": {
+      "value": 10
+    },
+    "serviceBusSku": {
+      "value": "Standard"
+    },
+    "serviceBusCapacity": {
+      "value": 1
+    },
+    "serviceBusZoneRedundant": {
+      "value": false
+    },
+    "functionAppSku": {
+      "value": "EP2"
+    },
+    "functionAppMinInstances": {
+      "value": 1
+    },
+    "functionAppMaxInstances": {
+      "value": 10
+    },
+    "keyVaultSku": {
+      "value": "standard"
+    },
+    "enablePurgeProtection": {
+      "value": true
+    },
+    "enablePrivateEndpoints": {
+      "value": true
+    },
+    "enableDdosProtection": {
+      "value": false
+    },
+    "allowedIpAddresses": {
+      "value": []
+    },
+    "logAnalyticsRetentionInDays": {
+      "value": 60
+    }
+  }
+}
