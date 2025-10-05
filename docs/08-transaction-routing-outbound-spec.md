@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Define architecture and processes for routing ingested EDI transactions to internal downstream subsystems and generating outbound acknowledgments / response EDI files (e.g., TA1, 999, 277, 271, 835) back to trading partners.
+Define architecture and processes for routing ingested EDI transactions to **trading partners** (both external healthcare organizations and internal configured partner endpoints) and generating outbound acknowledgments / response EDI files (e.g., TA1, 999, 277, 271, 835) back to trading partners.
 
 ## 2. Scope
 
@@ -26,25 +26,27 @@ A routing layer decouples ingestion from internal processing using message/event
 | Azure Function (router) | Parses envelope headers (ISA/GS/ST) lightweight, enriches routing event, publishes messages |
 | Azure Event Grid (ingestion event) | Source trigger to ADF; optional fan-out for simple subscribers |
 | Azure Service Bus (Topics) | Durable distribution of transaction routing messages with subscription filters |
-| Subscription Rules | Filter by `transactionSet`, `partnerCode`, `priority` |
-| **Downstream Destination Systems** (External) | Independent applications (Eligibility Service, Claims Processing, Enrollment Management, Remittance) that subscribe to routing topic and implement their own business logic and data stores |
-| Outbound Orchestrator (ADF / Durable Function) | Aggregates destination system outcome signals into outbound EDI responses |
-| Storage: Outbound Staging | Temporary assembly area for response segments assembled from destination system outcomes |
-| Storage: Outbound Delivery | Final response files for SFTP pickup or push |
+| Subscription Rules | Filter by `transactionSet`, `partnerCode`, `priority`, `direction` |
+| **Trading Partner Integration Adapters** | Bidirectional connectors handling format transformation and protocol adaptation for each configured partner (external and internal) |
+| **Trading Partners** | Configured endpoints (external and internal) that subscribe to routing topic messages and implement partner-specific business logic |
+| Outbound Orchestrator (ADF / Durable Function) | Aggregates trading partner outcome signals into outbound EDI responses |
+| Storage: Outbound Staging | Temporary assembly area for response segments assembled from trading partner outcomes |
+| Storage: Outbound Delivery | Final response files for SFTP pickup or push to partners |
 
 ### 3.2 Message Flow (High-Level)
 
 1. Ingestion pipeline completes validation & raw persistence.
 2. Router Function reads blob (header slice) to extract envelope identifiers: ISA control number, GS functional group, ST transaction set IDs.
 3. For each ST segment (batch may contain multiple): emit routing message to Service Bus Topic `edi-routing` with body + metadata.
-4. **Destination system subscriptions** receive relevant messages (e.g., Enrollment Management filters: `transactionSet = '834'`; Eligibility filters: `transactionSet IN ('270','276')`).
-5. **Each destination system** (independent application with its own architecture):
-   - Processes transactions according to its business logic
-   - Maintains its own data store (e.g., Enrollment Management uses event sourcing; Claims may use relational)
-   - Writes outcome summary signals to **its designated outbound staging area** when ready to acknowledge
-6. Outbound Orchestrator (part of core platform) periodically aggregates outcome signals from all destination systems, builds appropriate EDI responses (TA1, 999, 271, 277CA, 835) referencing original control numbers, and writes to `outbound/partner=<code>/` path.
+4. **Trading partner integration adapters** receive relevant messages via filtered subscriptions (e.g., Enrollment Management Partner filters: `transactionSet = '834' AND direction = 'INBOUND'`; Eligibility Partner filters: `transactionSet IN ('270','276') AND direction = 'INBOUND'`).
+5. **Each trading partner** (configured with unique partner code and endpoint):
+   - Receives transactions through their integration adapter
+   - Processes transactions according to partner-specific business logic
+   - Maintains partner-specific data stores (e.g., Enrollment Management Partner uses event sourcing; Claims Partner may use relational)
+   - Writes outcome summary signals to **designated outbound staging area** when ready to acknowledge
+6. Outbound Orchestrator (part of core platform) periodically aggregates outcome signals from all trading partners, builds appropriate EDI responses (TA1, 999, 271, 277CA, 835) referencing original control numbers, and writes to `outbound/partner=<code>/` path.
 7. TA1 Generation (Deferred): If ISA envelope structural errors detected during ingestion validation, TA1 negative acknowledgment is generated asynchronously by outbound orchestrator (< 5 min SLA) without emitting routing messages or further processing.
-8. SFTP partner retrieves response or receives notification (future: push via separate SFTP user folder `/outbound/<partnerCode>/`).
+8. Trading partners retrieve responses via configured delivery mechanism (SFTP, API, queue, etc.) or receive via push notification.
 
 ## 4. Routing Message Schema
 
@@ -52,8 +54,9 @@ A routing layer decouples ingestion from internal processing using message/event
 |-------|------|-------------|
 | routingId | GUID | Unique per ST transaction emitted |
 | ingestionId | GUID | Reference to original file ingest metadata |
-| partnerCode | String | Trading partner identifier |
+| partnerCode | String | Trading partner identifier (external or internal) |
 | transactionSet | String | ST01 (e.g., 270) |
+| direction | String | INBOUND (received from external partner) or OUTBOUND (sending to external partner) or INTERNAL (internal partner processing) |
 | functionalGroup | String | GS06 value |
 | interchangeControl | String | ISA13 value |
 | fileBlobPath | String | Raw file blob path |
@@ -63,23 +66,28 @@ A routing layer decouples ingestion from internal processing using message/event
 | checksumSha256 | String | Original file checksum (for integrity) |
 | correlationKey | String | Concise key partner + interchange + group |
 
-Messages delivered as JSON body in Service Bus with application properties mirroring filterable fields (`transactionSet`, `partnerCode`).
+Messages delivered as JSON body in Service Bus with application properties mirroring filterable fields (`transactionSet`, `partnerCode`, `direction`).
 
 ## 5. Service Bus Topology
 
 | Topic | Subscriptions | Purpose |
-|-------|--------------|---------|
-| `edi-routing` | `sub-eligibility`, `sub-claims`, `sub-enrollment`, `sub-remittance` | Primary routing fan-out |
+|-------|--------------|---------|  
+| `edi-routing` | `sub-enrollment-partner`, `sub-claims-partner`, `sub-eligibility-partner`, `sub-remittance-partner` | Primary routing fan-out to trading partners |
 | `edi-deadletter` | (n/a) | DLQ for poison messages |
-| `edi-outbound-ready` | `sub-outbound-orchestrator` | Signals partial results ready for assembly |
+| `edi-outbound-ready` | `sub-outbound-orchestrator` | Signals partner outcome results ready for assembly |
 
 Subscription rules example (SQL Filter):
 
 ```sql
-transactionSet IN ('270','271') AND partnerCode = 'PARTNERA'
-```
+-- Enrollment Management Partner (internal)
+transactionSet = '834' AND direction IN ('INBOUND', 'INTERNAL')
 
-## 6. Correlation & Tracking
+-- Claims Processing Partner (internal)
+transactionSet LIKE '837%' AND direction IN ('INBOUND', 'INTERNAL')
+
+-- Eligibility Service Partner (internal)
+transactionSet IN ('270','271') AND direction IN ('INBOUND', 'INTERNAL') AND partnerCode = 'PARTNERA'
+```## 6. Correlation & Tracking
 
 - Primary correlation: `ingestionId` (file-level). Secondary: `routingId` per ST.
 - Outbound acknowledgments include ISA/GS/ST control numbers referencing original plus `ingestionId` in metadata (not in EDI segments) for internal traceability.

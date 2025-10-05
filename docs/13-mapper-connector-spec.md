@@ -1,13 +1,15 @@
-# Mapper and Connector Solution Specification for Destination Claim Systems
+# Trading Partner Integration Adapters Specification
 
 ## 1. Purpose
 
-Define the architecture, integration patterns, data transformation logic, and operational procedures for connecting the Healthcare EDI Platform to downstream **destination claim systems** (external/legacy systems) that:
+Define the architecture, integration patterns, data transformation logic, and operational procedures for connecting the Healthcare EDI Platform to **trading partner endpoints** (both external healthcare organizations and internal configured partners) that:
 
-1. Consume routed EDI transactions (837, 270, 276, 278, etc.) in their native formats
-2. Generate business response data (271, 277, 277CA, 835) that must be transformed back to standard X12 for partner acknowledgments
+1. Consume routed EDI transactions (837, 270, 276, 278, etc.) in their native or partner-specific formats
+2. Generate business response data (271, 277, 277CA, 835) that must be transformed back to standard X12 for acknowledgments
 
-This specification bridges the **core platform routing layer** (see Doc 08) and **heterogeneous claim system ecosystems** while maintaining loose coupling, traceability, and data integrity.
+This specification bridges the **core platform routing layer** (see Doc 08) and **heterogeneous trading partner ecosystems** (external and internal) while maintaining loose coupling, traceability, and data integrity.
+
+**Key Architectural Change**: This unified approach treats internal systems (claims, eligibility, enrollment, remittance) as configured trading partners with dedicated integration adapters, eliminating the distinction between "internal destination systems" and "external partners."
 
 ---
 
@@ -17,21 +19,21 @@ This specification bridges the **core platform routing layer** (see Doc 08) and 
 
 | Category | Items |
 |----------|-------|
-| **Outbound (Platform → Claim System)** | Transformation of routing messages to claim system input formats (proprietary XML, JSON, flat files, database inserts, APIs) |
-| **Inbound (Claim System → Platform)** | Normalization of claim system responses to canonical intermediate format; assembly into standard X12 acknowledgments/responses |
-| **Connector Patterns** | File-based (SFTP/SMB), API-based (REST/SOAP), database-based (direct SQL, stored procedures), message queue-based (MSMQ, proprietary queues) |
-| **Claim System Types** | Adjudication engines, Prior authorization systems, Eligibility verification systems, Remittance processors, Claims clearinghouses |
-| **Error Handling** | Mapping failures, connectivity failures, claim system rejections, idempotency, retries, dead-letter handling |
-| **Observability** | Lineage tracking (routingId → claim system correlation ID → response), latency metrics, transformation audit logs |
+| **Outbound (Platform → Trading Partner)** | Transformation of routing messages to partner-specific input formats (proprietary XML, JSON, flat files, database inserts, APIs) for both external and internal partners |
+| **Inbound (Trading Partner → Platform)** | Normalization of partner responses to canonical intermediate format; assembly into standard X12 acknowledgments/responses |
+| **Connector Patterns** | File-based (SFTP/SMB), API-based (REST/SOAP), database-based (direct SQL, stored procedures), message queue-based (Service Bus, MSMQ, proprietary queues) |
+| **Trading Partner Types** | External partners (payers, providers, clearinghouses) and internal partners (claims processing, eligibility services, enrollment management, remittance processors) |
+| **Error Handling** | Mapping failures, connectivity failures, partner rejections, idempotency, retries, dead-letter handling |
+| **Observability** | Lineage tracking (routingId → partner correlation ID → response), latency metrics, transformation audit logs |
 | **Security** | Credential management, encryption in transit, least privilege access, PHI handling |
 
 ### 2.2 Out-of-Scope (Phase 1)
 
 - Real-time streaming transformations (batch/micro-batch only)
-- Custom business logic beyond data transformation (adjudication decisions remain in claim systems)
+- Custom business logic beyond data transformation (adjudication decisions remain in trading partners)
 - Legacy system modernization or replacement
 - Master data management (MDM) or canonical member/provider registries (reference data lookups only)
-- Claim system internal modifications (connectors are adapter layer only)
+- Trading partner internal modifications (adapters are interface layer only)
 
 ---
 
@@ -74,17 +76,18 @@ This specification bridges the **core platform routing layer** (see Doc 08) and 
                         │                           │                       │
                         ▼                           ▼                       ▼
          ┌──────────────────────────┐  ┌──────────────────────┐  ┌─────────────────┐
-         │  Mapper & Connector A    │  │  Mapper & Connector B│  │  Mapper & ...   │
-         │  (837 Claims)            │  │  (270 Eligibility)   │  │                 │
+         │  Partner Adapter A       │  │  Partner Adapter B   │  │  Partner         │
+         │  (837 Claims)            │  │  (270 Eligibility)   │  │  Adapter N       │
          └─────────────┬────────────┘  └──────────┬───────────┘  └────────┬────────┘
                        │                           │                       │
                        ▼                           ▼                       ▼
          ┌──────────────────────────┐  ┌──────────────────────┐  ┌─────────────────┐
-         │  Claim System 1          │  │  Claim System 2      │  │  Claim System N │
-         │  (Adjudication Engine)   │  │  (Eligibility SaaS)  │  │  (Legacy AS400) │
+         │  Trading Partner 1       │  │  Trading Partner 2   │  │  Trading         │
+         │  (Claims Partner -       │  │  (Eligibility SaaS - │  │  Partner N       │
+         │   Internal)              │  │   Internal)          │  │  (External)      │
          └─────────────┬────────────┘  └──────────┬───────────┘  └────────┬────────┘
                        │                           │                       │
-                       │ (Response data in native format)                  │
+                       │ (Response data in partner-specific format)        │
                        ▼                           ▼                       ▼
          ┌──────────────────────────────────────────────────────────────────┐
          │             Response Aggregation & X12 Assembly                  │
@@ -92,7 +95,7 @@ This specification bridges the **core platform routing layer** (see Doc 08) and 
          └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Principle**: Mappers and Connectors are **adapter layers** between the standardized platform and diverse claim systems. They do NOT own business logic; they translate formats and manage connectivity.
+**Key Principle**: Partner Integration Adapters are **bidirectional interface layers** between the standardized platform and diverse trading partner ecosystems (external and internal). They do NOT own business logic; they translate formats and manage connectivity.
 
 ### 3.2 Interaction with Core Platform Components
 

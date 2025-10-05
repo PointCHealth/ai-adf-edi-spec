@@ -242,15 +242,23 @@ Extend core ingestion to emit granular routing messages per ST transaction segme
 ![Routing Error Handling](./diagrams/png/routing-error-handling.png)  
 [Mermaid source](./diagrams/routing-error-handling.mmd)
 
-## 20. Downstream Subsystem Consumption Flow
+## 20. Trading Partner Data Consumption Flow
 
-Each subsystem (e.g., Eligibility) listens on a filtered subscription. Processing steps (outside ingestion SLA scope) typically:
+Each trading partner (configured with unique partner code and endpoint) listens on a filtered subscription. Processing steps (outside ingestion SLA scope) typically:
 
-1. Receive routing message; deserialize; idempotency check by `(routingId)` existence in subsystem state store.
-2. Fetch raw file slice (or entire file if needed) using `fileBlobPath`; parse relevant segments.
-3. Persist domain outcome (e.g., eligibility result, claim status placeholder) to its staging area with `routingId` linkage.
+1. Receive routing message via integration adapter; deserialize; idempotency check by `(routingId)` existence in partner state store.
+2. Fetch raw file slice (or entire file if needed) using `fileBlobPath`; parse relevant segments through partner-specific adapter.
+3. Persist domain outcome (e.g., eligibility result, claim status placeholder) to partner's staging area with `routingId` linkage.
 4. Emit outcome event (optional) or write record polled by Outbound Orchestrator.
 5. On fatal parse error, abandon / dead-letter message; metrics increment `RoutingDLQCount`.
+
+**Trading Partner Types:**
+- **External Partners**: Traditional external organizations (payers, providers, clearinghouses) connected via SFTP/AS2/API
+- **Internal Partners**: Internal systems configured as partners with dedicated endpoints:
+  - Eligibility Service Partner (270/271 processing)
+  - Claims Processing Partner (837/277 processing with event sourcing or relational storage)
+  - Enrollment Management Partner (834 processing with event sourcing - see doc 11)
+  - Remittance Processing Partner (835/820 processing)
 
 ## 21. Outbound Response Assembly Sequence
 

@@ -28,29 +28,36 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 ## 3. High-Level Component Inventory
 
 | Layer | Purpose | Representative Azure Services / Artifacts |
-|-------|---------|--------------------------------------------|
+|-------|---------|--------------------------------------------|  
 | Ingestion & Landing | Receive partner SFTP drops into secure storage | SFTP (managed service or partner-managed) -> ADLS Gen2 (raw container) |
 | Event Orchestration | Trigger downstream pipeline upon file arrival | Azure Data Factory (ADF) event pipeline, Storage Events |
 | Validation & Metadata | Interchange/envelope parsing, syntax validation, metadata extraction (control numbers, transaction set IDs) | ADF activities, Custom Function(s) or Data Flow (future) |
-| Routing | Classify & dispatch messages to appropriate downstream destination systems | Azure Function (Router), Service Bus Topic (`edi-routing`) + subscriptions with rule filters |
-| **Destination Systems (External)** | **Independent applications subscribing to routing messages** | **Enrollment Management (event sourcing), Eligibility Service, Claims Processing, Remittance - each with own architecture** |
-| Outbound Orchestration | Generate and publish acknowledgments / response artifacts (TA1, 999, 277CA) from destination system outcomes | Azure Function (Outbound Orchestrator), Service Bus, Storage staging |
-| Control Number Management | Detect gaps / duplicates; maintain sequence integrity | Metadata tables or logs + KQL queries (future durable store TBD) |
+| Routing | Classify & dispatch messages to appropriate trading partner endpoints | Azure Function (Router), Service Bus Topic (`edi-routing`) + subscriptions with rule filters |
+| **Trading Partner Integration** | **Bidirectional adapters for all trading partners** | **Azure Functions (mappers/connectors), Service Bus subscriptions, partner-specific protocol adapters** |
+| **Trading Partners (External)** | **External healthcare organizations** | **Payers, providers, clearinghouses via SFTP/AS2/API** |
+| **Trading Partners (Internal)** | **Internal systems configured as partners** | **Enrollment Management (event sourcing), Eligibility Service, Claims Processing, Remittance - each with configured endpoints** |
+| Outbound Orchestration | Generate and publish acknowledgments / response artifacts (TA1, 999, 277CA) from trading partner outcomes | Azure Function (Outbound Orchestrator), Service Bus, Storage staging |
+| Control Number Management | Detect gaps / duplicates; maintain sequence integrity | Azure SQL Database with optimistic concurrency + KQL queries |
 | Observability & SLA | Latency, error mix, reject rates, backlog | Azure Monitor / Log Analytics (custom tables), KQL queries under `queries/kusto/` |
 | Governance & Tagging | Uniform taxonomy & cost/ownership tracking | Azure Policy + Tagging Standards (`09-tagging-governance-spec`) |
 | Infrastructure as Code | Reproducible environment provisioning | Bicep modules (`infra/bicep/modules/`) |
 
----
-
 ## 4. Data Flow (Simplified Narrative)
 
-1. Partner transfers X12 file to SFTP landing -> Ingested into ADLS raw folder (immutable).
+1. Trading partner (external or internal source) transfers X12 file to SFTP landing -> Ingested into ADLS raw folder (immutable).
 2. Storage event triggers ADF pipeline (or Function wrapper) for metadata extraction + initial validation.
 3. Validation results + interchange metadata are persisted into custom log tables (e.g., `InterchangeValidation_CL`).
 4. Routing Function reads normalized metadata message (from staging queue/event) and applies declarative rules from `config/routing/routing-rules.json` to publish to Service Bus subscriptions.
-5. Downstream processors (not in scope) produce acknowledgment signals; Outbound Orchestrator assembles TA1 / 999 / 277CA payloads referencing original control numbers and timing them vs SLA targets.
-6. Outbound acknowledgments are written to outbound storage + optionally forwarded to partner (future channel integration) and logged (`AckAssembly_CL`).
-7. KQL dashboards compute latency percentiles, reject rates, gap detection, backlog health; alerts feed Ops runbooks.
+5. **Trading partner integration adapters** receive filtered messages and process transactions according to partner-specific logic. Each trading partner (whether external or internal) is configured with:
+   - Unique partner code and configuration profile
+   - Endpoint type (SFTP, Service Bus, REST API, Database)
+   - Data flow direction (INBOUND, OUTBOUND, BIDIRECTIONAL)
+   - Integration adapter handling format transformation and protocol adaptation
+6. Trading partners produce outcome signals; Outbound Orchestrator assembles TA1 / 999 / 277CA payloads referencing original control numbers and timing them vs SLA targets.
+7. Outbound acknowledgments are written to outbound storage + delivered to trading partners via configured delivery mechanism (SFTP pickup, API push, queue) and logged (`AckAssembly_CL`).
+8. KQL dashboards compute latency percentiles, reject rates, gap detection, backlog health; alerts feed Ops runbooks.
+
+**Key Architectural Principle**: All data sources and destinations (external payers/providers AND internal claims/eligibility/enrollment systems) are treated uniformly as **trading partners** with configured endpoints and integration adapters. This eliminates architectural distinctions between "internal" and "external" systems.
 
 ---
 
@@ -61,13 +68,20 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 - Functional Group (GS/GE): Groups related transaction sets; group control number.
 - Transaction Set (ST/SE): Individual business document (e.g., claim batch) with control number.
 - Control Number Gap: Missing or out-of-sequence expected control number; indicates loss or duplication risk.
+- **Trading Partner**: External healthcare organization (payer, provider, clearinghouse) or internal configured system endpoint receiving or sending EDI data.
+- **Partner Type**: Classification of trading partner as **EXTERNAL** (outside organization) or **INTERNAL** (internal system treated as partner).
+- **Partner Code**: Unique identifier for each trading partner (e.g., `PARTNERA`, `INTERNAL-CLAIMS`).
+- **Data Flow Direction**: Classification of partner data flow as **INBOUND** (partner sends data), **OUTBOUND** (partner receives data), or **BIDIRECTIONAL** (both).
+- **Endpoint Type**: Protocol used for partner integration - **SFTP**, **REST_API**, **SERVICE_BUS**, or **DATABASE**.
+- **Integration Adapter**: Bidirectional Azure Function connecting EDI platform to trading partner endpoints; handles format transformation and protocol adaptation.
+- **Adapter Type**: Pattern for integration adapter - **EVENT_SOURCING** (event-driven with immutable log), **CRUD** (direct operations), or **CUSTOM** (specialized logic).
 - Ack Types:
   - TA1: Interchange-level acknowledgment (structure / envelope acceptance or reject)
   - 999: Functional acknowledgment (syntax acceptance or rejection at transaction / segment level)
   - 277CA: Claim acknowledgment (business-level status for 837 transactions)
 - Latency Metrics: Time between file persisted and ack assembly (p50/p95/p99 tracked).
-- Backlog: Count of unacknowledged originating transactions older than SLA thresholds.
-- Routing Rule: Declarative filter mapping metadata attributes (e.g., partnerId, transactionType) to a Service Bus subscription or handler.
+- Backlog: Count of unacknowledged originating transactions pending trading partner processing.
+- Routing Rule: Declarative filter mapping metadata attributes (e.g., partnerId, transactionType, direction) to a Service Bus subscription or handler.
 
 ---
 
@@ -75,12 +89,18 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 
 | File | Purpose | Notes |
 |------|---------|-------|
-| `config/partners/partners.schema.json` | JSON Schema for validating partner definitions | Enforces shape, required keys, enumerations |
-| `config/partners/partners.sample.json` | Example partner configs | Basis for generating production variant |
-| `config/routing/routing-rules.json` | Declarative routing logic | Consumed by Router Function to build Service Bus rules |
+| `config/partners/partners.schema.json` | JSON Schema for validating partner definitions | Enforces partnerType (EXTERNAL/INTERNAL), dataFlow.direction, endpoint types (SFTP, SERVICE_BUS, REST_API, DATABASE), integration.adapterType |
+| `config/partners/partners.sample.json` | Example partner configs (2 external, 4 internal) | Demonstrates SFTP endpoints for external partners, Service Bus subscriptions for internal partners with different adapter types |
+| `config/routing/routing-rules.json` | Declarative routing logic | Consumed by Router Function to build Service Bus rules with direction filters |
 | `ACK_SLA.md` | SLA targets & KQL snippet references | Central operational SLA quick reference |
 
 Validation Command (local): `npx ajv validate -s ./config/partners/partners.schema.json -d ./config/partners/partners.sample.json`
+
+**Partner Configuration Schema Highlights**:
+- `partnerType`: "EXTERNAL" | "INTERNAL" 
+- `dataFlow.direction`: "INBOUND" | "OUTBOUND" | "BIDIRECTIONAL"
+- `endpoint.type`: "SFTP" | "SERVICE_BUS" | "REST_API" | "DATABASE" with protocol-specific configuration
+- `integration.adapterType`: "EVENT_SOURCING" | "CRUD" | "CUSTOM" with optional customAdapterConfig
 
 ---
 
@@ -246,9 +266,10 @@ Safeguards to Maintain:
 
 - **Event-Driven Architecture**: File arrival → validation → routing → processing → acknowledgment
 - **Saga Pattern**: Track multi-step acknowledgment workflows with compensation
-- **Circuit Breaker**: Isolate failing downstream systems to prevent cascade failures
+- **Circuit Breaker**: Isolate failing trading partners to prevent cascade failures
 - **Strangler Fig**: Enable gradual migration from legacy EDI processing
-- **Domain Separation**: Each destination system independently deployable with own data store
+- **Trading Partner Abstraction**: Each trading partner (internal or external) independently configured with own endpoint and adapter type
+- **Protocol Adapter Pattern**: Separate transport protocol concerns (SFTP, Service Bus, REST API) from business logic
 
 ### 17.3 Technology Decisions (Rationale)
 
@@ -284,7 +305,8 @@ The implementation should be structured around **5 core functional domains** wit
 |-------|---------|------------------|----------------|
 | **Core Platform** | Foundation ingestion, storage, shared utilities | ADF, ADLS Gen2, Event Grid | `/src/platform/` |
 | **Routing & Event Hub** | Decoupling layer, message routing | Azure Functions, Service Bus | `/src/routing/` |
-| **Destination Systems** | Business logic microservices | Domain-specific (CRUD, Event Sourcing) | `/src/destinations/` |
+| **Trading Partner Integration** | Bidirectional adapters for all trading partners | Azure Functions, protocol adapters | `/src/partners/` |
+| **Trading Partners** | Internal and external partner systems | Various (event sourcing, CRUD, custom) | Partner-managed or `/src/partners/internal/` |
 | **Outbound Assembly** | Acknowledgment generation | Durable Functions, Azure SQL | `/src/outbound/` |
 | **Cross-Cutting** | Security, observability, configuration | Log Analytics, Key Vault, Bicep | `/src/cross-cutting/` |
 
@@ -293,8 +315,8 @@ The implementation should be structured around **5 core functional domains** wit
 | Phase | Duration | Focus | Key Deliverables |
 |-------|----------|-------|------------------|
 | **Phase 1: Foundation** | Weeks 1-4 | Infrastructure, basic ingestion | Bicep modules, ADF pipelines, storage zones |
-| **Phase 2: Routing & First Destination** | Weeks 5-8 | Event-driven routing, eligibility service | Router Function, Service Bus, 270/271 processing |
-| **Phase 3: Scale & Additional Destinations** | Weeks 9-16 | Claims, enrollment, enhanced outbound | 837/834 processing, control number store |
+| **Phase 2: Routing & First Trading Partner** | Weeks 5-8 | Event-driven routing, eligibility partner integration | Router Function, Service Bus, 270/271 processing |
+| **Phase 3: Scale & Additional Trading Partners** | Weeks 9-16 | Claims, enrollment, enhanced outbound | 837/834 processing, control number store, partner adapters |
 | **Phase 4: Production Readiness** | Weeks 17-20 | Security hardening, operations | HIPAA compliance, monitoring, DR strategy |
 
 ### 15.3 Repository Structure Recommendation
@@ -305,7 +327,9 @@ The implementation should be structured around **5 core functional domains** wit
 ├── src/
 │   ├── platform/                # Core ingestion & infrastructure
 │   ├── routing/                 # Message routing layer
-│   ├── destinations/            # Business domain services
+│   ├── partners/                # Trading partner integration adapters
+│   │   ├── internal/           # Internal partner implementations
+│   │   └── external/           # External partner protocol adapters
 │   ├── outbound/               # Acknowledgment assembly
 │   └── shared/                 # Common libraries
 ├── infra/
@@ -346,16 +370,16 @@ The implementation should be structured around **5 core functional domains** wit
 ### Phase 2 Actions (Routing Layer)
 
 1. **Router Function**: Generate Azure Function code for envelope parsing and Service Bus message publishing.
-2. **Service Bus Configuration**: Create Bicep modules for topics, subscriptions, and filtering rules.
-3. **First Destination Service**: Implement eligibility service (270/271) as proof of concept microservice.
+2. **Service Bus Configuration**: Create Bicep modules for topics, subscriptions, and filtering rules with direction support.
+3. **First Trading Partner Integration**: Implement eligibility partner (270/271) integration adapter as proof of concept.
 4. **Basic Acknowledgments**: Generate 999 functional acknowledgment assembly logic.
 
 ### Phase 3 Actions (Scale)
 
-1. **Claims Processing**: Implement 837/277CA destination service with complex business logic patterns.
+1. **Claims Processing Partner**: Implement 837/277CA trading partner integration adapter with complex business logic patterns.
 2. **Control Number Store**: Create Azure SQL-based counter management with optimistic concurrency.
-3. **Event Sourcing Example**: Implement enrollment management (834) using event sourcing pattern.
-4. **Enhanced Outbound**: Complete acknowledgment lifecycle (TA1, 277CA, etc.) with SLA tracking.
+3. **Event Sourcing Partner**: Implement enrollment management (834) using event sourcing pattern as internal trading partner.
+4. **Enhanced Outbound**: Complete acknowledgment lifecycle (TA1, 277CA, etc.) with SLA tracking and partner-specific delivery.
 
 ### Phase 4 Actions (Production)
 

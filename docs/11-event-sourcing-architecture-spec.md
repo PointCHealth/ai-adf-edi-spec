@@ -1,4 +1,4 @@
-# Event Sourcing Architecture for EDI 834 Enrollment Management System
+# Event Sourcing Architecture for EDI 834 Enrollment Management Partner
 
 **Document Version:** 1.0  
 **Last Updated:** October 2, 2025  
@@ -8,15 +8,24 @@
 
 ## System Boundary
 
-**This specification describes the Enrollment Management System**, a downstream destination system that consumes 834 transaction routing messages from the core EDI Platform via Azure Service Bus. This is **not part of the core platform** described in docs 01-10.
+**This specification describes the Enrollment Management Partner**, a trading partner configured within the Healthcare EDI Platform ecosystem that consumes 834 transaction routing messages from the core EDI Platform via Azure Service Bus. This partner is configured as an **internal trading partner** with its own endpoint configuration and integration adapter.
 
 **Relationship to Core Platform:**
 
 - Core platform handles file ingestion, validation, raw storage, and routing (see doc 01, 08)
-- Enrollment Management subscribes to Service Bus topic `edi-routing` with filter `transactionSet = '834'`
-- Enrollment Management implements event sourcing internally as an architectural choice for its domain
-- Other destination systems (Eligibility, Claims, Remittance) may use different patterns
-- Enrollment Management writes outcome signals to outbound staging for acknowledgment generation
+- Enrollment Management Partner is configured with partner code (e.g., `INTERNAL-ENROLLMENT`) and subscribes to Service Bus topic `edi-routing` with filter `transactionSet = '834' AND partnerCode = 'INTERNAL-ENROLLMENT'`
+- Enrollment Management Partner implements event sourcing internally as an architectural choice for its domain
+- Other trading partners (external and internal) may use different architectural patterns (CRUD, event sourcing, etc.)
+- Enrollment Management Partner writes outcome signals to outbound staging for acknowledgment generation, same as external partners
+- Partner integration follows the same loose coupling model as external partners, using standardized routing messages and outcome signals
+
+**Configuration as Trading Partner:**
+- Partner Code: `INTERNAL-ENROLLMENT`
+- Partner Type: `INTERNAL`
+- Direction: `INBOUND` (receives 834 transactions)
+- Endpoint Type: `SERVICE_BUS_SUBSCRIPTION`
+- Integration Adapter: Specialized event sourcing processor
+- Business Logic: Member enrollment lifecycle management with event sourcing
 
 ---
 

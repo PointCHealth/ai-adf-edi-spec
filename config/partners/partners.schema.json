@@ -1,45 +1,153 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Partner Configuration",
+  "title": "Trading Partner Configuration",
+  "description": "Unified configuration schema for all trading partners (external and internal)",
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["partnerCode","name","status","expectedTransactions","sftp","acknowledgments","sla"],
+    "required": ["partnerCode","name","partnerType","status","expectedTransactions","dataFlow","acknowledgments","sla"],
     "properties": {
-      "partnerCode": {"type": "string", "pattern": "^[A-Z0-9]{2,15}$"},
-      "name": {"type": "string"},
-      "status": {"type": "string", "enum": ["draft","active","inactive"]},
+      "partnerCode": {
+        "type": "string", 
+        "pattern": "^[A-Z0-9\\-]{2,20}$",
+        "description": "Unique partner identifier (external partners: PARTNERA; internal partners: INTERNAL-CLAIMS)"
+      },
+      "name": {
+        "type": "string",
+        "description": "Human-readable partner name"
+      },
+      "partnerType": {
+        "type": "string",
+        "enum": ["EXTERNAL", "INTERNAL"],
+        "description": "Partner classification: EXTERNAL (traditional trading partners) or INTERNAL (internal systems configured as partners)"
+      },
+      "status": {
+        "type": "string", 
+        "enum": ["draft","active","inactive"],
+        "description": "Partner lifecycle status"
+      },
       "expectedTransactions": {
         "type": "array",
         "items": {"type": "string", "pattern": "^\\d{3}[A-Za-z]?$"},
-        "minItems": 1
+        "minItems": 1,
+        "description": "Transaction set codes expected from/to this partner (e.g., 270, 271, 834, 837)"
+      },
+      "dataFlow": {
+        "type": "object",
+        "required": ["direction"],
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": ["INBOUND", "OUTBOUND", "BIDIRECTIONAL"],
+            "description": "Data flow direction: INBOUND (partner sends to platform), OUTBOUND (platform sends to partner), BIDIRECTIONAL (both)"
+          }
+        },
+        "description": "Data flow configuration for this partner"
       },
       "routingPriorityOverrides": {
         "type": "object",
-        "additionalProperties": {"type": "string", "enum": ["standard","high"]}
+        "additionalProperties": {"type": "string", "enum": ["standard","high"]},
+        "description": "Transaction-specific routing priority overrides"
       },
-      "sftp": {
+      "endpoint": {
         "type": "object",
-        "required": ["homePath","pgpRequired"],
-        "properties": {
-          "homePath": {"type": "string"},
-          "pgpRequired": {"type": "boolean"}
-        }
+        "description": "Partner endpoint configuration (protocol-specific)",
+        "oneOf": [
+          {
+            "required": ["type", "sftp"],
+            "properties": {
+              "type": {"const": "SFTP"},
+              "sftp": {
+                "type": "object",
+                "required": ["homePath","pgpRequired"],
+                "properties": {
+                  "homePath": {"type": "string"},
+                  "pgpRequired": {"type": "boolean"}
+                }
+              }
+            }
+          },
+          {
+            "required": ["type", "serviceBus"],
+            "properties": {
+              "type": {"const": "SERVICE_BUS"},
+              "serviceBus": {
+                "type": "object",
+                "required": ["subscriptionName"],
+                "properties": {
+                  "subscriptionName": {"type": "string"},
+                  "topicName": {"type": "string", "default": "edi-routing"}
+                }
+              }
+            }
+          },
+          {
+            "required": ["type", "api"],
+            "properties": {
+              "type": {"const": "REST_API"},
+              "api": {
+                "type": "object",
+                "required": ["baseUrl"],
+                "properties": {
+                  "baseUrl": {"type": "string", "format": "uri"},
+                  "authType": {"type": "string", "enum": ["OAUTH2", "API_KEY", "BASIC"]},
+                  "healthCheckPath": {"type": "string"}
+                }
+              }
+            }
+          },
+          {
+            "required": ["type", "database"],
+            "properties": {
+              "type": {"const": "DATABASE"},
+              "database": {
+                "type": "object",
+                "required": ["connectionStringSecretName"],
+                "properties": {
+                  "connectionStringSecretName": {"type": "string"},
+                  "stagingTable": {"type": "string"}
+                }
+              }
+            }
+          }
+        ]
       },
       "acknowledgments": {
         "type": "object",
         "required": ["expectsTA1","expects999"],
         "properties": {
           "expectsTA1": {"type": "boolean"},
-            "expects999": {"type": "boolean"}
-        }
+          "expects999": {"type": "boolean"}
+        },
+        "description": "Acknowledgment expectations for this partner"
       },
       "sla": {
         "type": "object",
         "required": ["ingestionLatencySecondsP95","ack999Minutes"],
         "properties": {
           "ingestionLatencySecondsP95": {"type": "integer", "minimum": 1},
-          "ack999Minutes": {"type": "integer", "minimum": 1}
+          "ack999Minutes": {"type": "integer", "minimum": 1},
+          "responseLatencyMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Expected business response latency (e.g., 271 for 270 inquiry)"
+          }
+        },
+        "description": "SLA targets for this partner"
+      },
+      "integration": {
+        "type": "object",
+        "description": "Integration adapter configuration (for internal partners)",
+        "properties": {
+          "adapterType": {
+            "type": "string",
+            "enum": ["EVENT_SOURCING", "CRUD", "CUSTOM"],
+            "description": "Internal partner integration architecture pattern"
+          },
+          "customAdapterConfig": {
+            "type": "object",
+            "description": "Custom adapter-specific configuration"
+          }
         }
       }
     },

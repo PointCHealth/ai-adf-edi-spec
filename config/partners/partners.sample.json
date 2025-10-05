@@ -1,13 +1,20 @@
 [
   {
     "partnerCode": "PARTNERA",
-    "name": "Partner A Health",
+    "name": "Partner A Health (External Payer)",
+    "partnerType": "EXTERNAL",
     "status": "active",
     "expectedTransactions": ["270","271","999"],
+    "dataFlow": {
+      "direction": "BIDIRECTIONAL"
+    },
     "routingPriorityOverrides": {"270": "standard"},
-    "sftp": {
-      "homePath": "/inbound/PARTNERA/",
-      "pgpRequired": false
+    "endpoint": {
+      "type": "SFTP",
+      "sftp": {
+        "homePath": "/inbound/PARTNERA/",
+        "pgpRequired": false
+      }
     },
     "acknowledgments": {
       "expectsTA1": true,
@@ -15,18 +22,26 @@
     },
     "sla": {
       "ingestionLatencySecondsP95": 300,
-      "ack999Minutes": 15
+      "ack999Minutes": 15,
+      "responseLatencyMinutes": 5
     }
   },
   {
     "partnerCode": "PARTNERB",
-    "name": "Partner B Claims",
+    "name": "Partner B Claims (External Clearinghouse)",
+    "partnerType": "EXTERNAL",
     "status": "draft",
     "expectedTransactions": ["276","277","835"],
+    "dataFlow": {
+      "direction": "BIDIRECTIONAL"
+    },
     "routingPriorityOverrides": {"276": "high"},
-    "sftp": {
-      "homePath": "/inbound/PARTNERB/",
-      "pgpRequired": true
+    "endpoint": {
+      "type": "SFTP",
+      "sftp": {
+        "homePath": "/inbound/PARTNERB/",
+        "pgpRequired": true
+      }
     },
     "acknowledgments": {
       "expectsTA1": true,
@@ -34,7 +49,143 @@
     },
     "sla": {
       "ingestionLatencySecondsP95": 300,
-      "ack999Minutes": 30
+      "ack999Minutes": 30,
+      "responseLatencyMinutes": 120
+    }
+  },
+  {
+    "partnerCode": "INTERNAL-ELIGIBILITY",
+    "name": "Eligibility Service (Internal Partner)",
+    "partnerType": "INTERNAL",
+    "status": "active",
+    "expectedTransactions": ["270","271"],
+    "dataFlow": {
+      "direction": "BIDIRECTIONAL"
+    },
+    "routingPriorityOverrides": {"270": "high"},
+    "endpoint": {
+      "type": "SERVICE_BUS",
+      "serviceBus": {
+        "subscriptionName": "sub-eligibility-partner",
+        "topicName": "edi-routing"
+      }
+    },
+    "acknowledgments": {
+      "expectsTA1": false,
+      "expects999": true
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 120,
+      "ack999Minutes": 10,
+      "responseLatencyMinutes": 2
+    },
+    "integration": {
+      "adapterType": "CRUD",
+      "customAdapterConfig": {
+        "databaseConnectionSecretName": "eligibility-db-connection"
+      }
+    }
+  },
+  {
+    "partnerCode": "INTERNAL-CLAIMS",
+    "name": "Claims Processing (Internal Partner)",
+    "partnerType": "INTERNAL",
+    "status": "active",
+    "expectedTransactions": ["837P","837I","837D","276","277","277CA"],
+    "dataFlow": {
+      "direction": "BIDIRECTIONAL"
+    },
+    "routingPriorityOverrides": {
+      "837P": "high",
+      "837I": "high",
+      "837D": "high"
+    },
+    "endpoint": {
+      "type": "SERVICE_BUS",
+      "serviceBus": {
+        "subscriptionName": "sub-claims-partner",
+        "topicName": "edi-routing"
+      }
+    },
+    "acknowledgments": {
+      "expectsTA1": false,
+      "expects999": true
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 180,
+      "ack999Minutes": 15,
+      "responseLatencyMinutes": 240
+    },
+    "integration": {
+      "adapterType": "CRUD",
+      "customAdapterConfig": {
+        "apiBaseUrl": "https://claims-api-internal.example.com/v1"
+      }
+    }
+  },
+  {
+    "partnerCode": "INTERNAL-ENROLLMENT",
+    "name": "Enrollment Management (Internal Partner)",
+    "partnerType": "INTERNAL",
+    "status": "active",
+    "expectedTransactions": ["834"],
+    "dataFlow": {
+      "direction": "INBOUND"
+    },
+    "routingPriorityOverrides": {"834": "standard"},
+    "endpoint": {
+      "type": "SERVICE_BUS",
+      "serviceBus": {
+        "subscriptionName": "sub-enrollment-partner",
+        "topicName": "edi-routing"
+      }
+    },
+    "acknowledgments": {
+      "expectsTA1": false,
+      "expects999": true
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 300,
+      "ack999Minutes": 15
+    },
+    "integration": {
+      "adapterType": "EVENT_SOURCING",
+      "customAdapterConfig": {
+        "eventStoreConnectionSecretName": "enrollment-db-connection",
+        "snapshotIntervalEvents": 100
+      }
+    }
+  },
+  {
+    "partnerCode": "INTERNAL-REMITTANCE",
+    "name": "Remittance Processing (Internal Partner)",
+    "partnerType": "INTERNAL",
+    "status": "active",
+    "expectedTransactions": ["835","820"],
+    "dataFlow": {
+      "direction": "INBOUND"
+    },
+    "routingPriorityOverrides": {"835": "high"},
+    "endpoint": {
+      "type": "SERVICE_BUS",
+      "serviceBus": {
+        "subscriptionName": "sub-remittance-partner",
+        "topicName": "edi-routing"
+      }
+    },
+    "acknowledgments": {
+      "expectsTA1": false,
+      "expects999": true
+    },
+    "sla": {
+      "ingestionLatencySecondsP95": 240,
+      "ack999Minutes": 20
+    },
+    "integration": {
+      "adapterType": "CRUD",
+      "customAdapterConfig": {
+        "databaseConnectionSecretName": "remittance-db-connection"
+      }
     }
   }
 ]

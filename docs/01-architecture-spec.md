@@ -56,8 +56,10 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 
 ### Components
 
-- External Trading Partners (SFTP clients)
-- Azure Storage (SFTP-enabled hierarchical namespace) – Partner landing containers/folders
+- **Trading Partners** (External and Internal) – All systems sending or receiving EDI data, including:
+  - External partners (payers, providers, clearinghouses) via SFTP
+  - Internal systems (eligibility, claims, enrollment, remittance) via configured endpoints
+- Azure Storage (SFTP-enabled hierarchical namespace) – Partner landing and outbound containers/folders
 - Event Grid (Blob Created events)
 - Azure Data Factory – Orchestrates validation, tagging, movement, and status updates
 - Optional Azure Function / Container App – Pluggable EDI pre-processor (checksum, virus scan, structural validation)
@@ -68,22 +70,34 @@ This document defines the target architecture for ingesting healthcare EDI (e.g.
 - Azure Monitor / Action Groups – Alerts (failed pipeline, latency thresholds)
 - GitHub – Repository, Actions workflows (CI for IaC + ADF JSON, CD for releases)
 - Azure Active Directory (Entra ID) – Managed Identities for ADF, Functions, Purview scanners
-- Azure Service Bus (Topics) – Durable routing fan‑out for downstream destination systems
+- Azure Service Bus (Topics) – Durable routing fan‑out for trading partner endpoints
 - Enterprise Scheduler (ADF + Function + Service Bus) – Governs time-based EDI generation and reconciliation jobs (see 14-enterprise-scheduler-spec)
-- **Downstream Destination Systems** (out of scope for core platform) – Independent applications that subscribe to routing messages (e.g., Eligibility Service, Claims Processing, Enrollment Management with event sourcing, Remittance Processing)
+- **Partner Integration Adapters** (within platform scope) – Bidirectional connectors for each trading partner endpoint, handling format transformation and protocol adaptation
 
-### Routing & Outbound (Preview Overview)
+### Routing & Trading Partner Integration (Overview)
 
-The core ingestion architecture is extended by a Routing Layer that decouples raw file validation/persistence from downstream transactional processing and outbound acknowledgment generation. After a file is validated and the immutable raw copy is persisted, a lightweight routing function (or ADF activity invoking a Function) parses only the envelope headers needed to emit one routing message per ST transaction. These messages are published to a Service Bus Topic (e.g., `edi-routing`) with filterable application properties (`transactionSet`, `partnerCode`, `priority`).
+The core ingestion architecture is extended by a Routing Layer that decouples raw file validation/persistence from transactional processing and outbound distribution. After a file is validated and the immutable raw copy is persisted, a lightweight routing function (or ADF activity invoking a Function) parses only the envelope headers needed to emit one routing message per ST transaction. These messages are published to a Service Bus Topic (e.g., `edi-routing`) with filterable application properties (`transactionSet`, `partnerCode`, `priority`, `direction`).
 
-**Downstream destination systems** (eligibility, claims, enrollment management, remittance) are independent applications that attach their own Service Bus subscriptions with SQL filters to receive relevant transactions. Each destination system owns its own data store, business logic, and processing patterns. For example, the Enrollment Management system (see companion spec 11-event-sourcing-architecture-spec.md) implements event sourcing internally for 834 transactions but operates completely independently from the core platform.
+**All trading partners** (both external partners and internal systems like eligibility, claims, enrollment management, remittance) are configured with integration endpoints and adapters. Each trading partner:
+- Has a unique partner code and configuration profile
+- Connects via configured endpoints (SFTP, REST API, database, message queue)
+- May send data to the platform (inbound), receive data from the platform (outbound), or both (bidirectional)
+- Receives data through partner-specific integration adapters that handle format transformation and protocol adaptation
 
-This pattern:
+For example, the Enrollment Management system is configured as an internal trading partner that:
+- Receives inbound 834 transactions via Service Bus subscription
+- Implements event sourcing internally for transaction processing
+- Sends outcome signals back through the platform for acknowledgment generation
+- Operates with the same loose coupling as external partners
 
-1. Prevents tight coupling between ingestion throughput and downstream system responsiveness.
-2. Enables independent scaling and retry semantics per subscriber via Service Bus DLQs.
-3. Provides a normalized, minimal metadata contract (no PHI) for internal event processing.
-4. Allows destination systems to implement their own architectural patterns without impacting the platform.
+This unified pattern:
+
+1. Treats all data sources and destinations consistently as trading partners
+2. Prevents tight coupling between ingestion/outbound throughput and partner system responsiveness
+3. Enables independent scaling and retry semantics per partner via Service Bus DLQs
+4. Provides a normalized, minimal metadata contract (no PHI) for routing
+5. Allows each trading partner to implement their own architectural patterns without impacting the platform
+6. Simplifies configuration by using the same partner model for internal and external systems
 
 Outbound acknowledgment and response generation (TA1, 999, 271, 277, 835) is orchestrated separately (Durable Function or scheduled ADF pipeline) aggregating subsystem outcomes and constructing response EDI files in an outbound staging area before partner pickup. See companion `08-transaction-routing-outbound-spec.md` for full details.
 
@@ -151,13 +165,14 @@ Reference `14-enterprise-scheduler-spec.md` for the detailed design, configurati
 ## 7. Logical Architecture Layers
 
 | Layer | Purpose |
-|-------|---------|
+|-------|---------|  
 | Ingestion | Secure reception of partner files (SFTP) |
 | Orchestration | Pipeline coordination, conditional branching (ADF) |
 | Validation & Prep | Integrity, security, classification |
 | Routing Layer | Envelope peek + publish transaction routing events (Service Bus) |
 | Storage (Raw) | Immutable retention of originals |
 | Storage (Staging/Curated) | (Future) Transformation outputs |
+| **Partner Integration** | Bidirectional adapters for all trading partners (external and internal) |
 | Outbound Assembly | Generate acknowledgments / response EDI files |
 | Metadata & Catalog | Lineage, schema, audit, discovery |
 | Observability | Logs, metrics, alerts, SLA dashboards |
@@ -205,8 +220,14 @@ Reference `14-enterprise-scheduler-spec.md` for the detailed design, configurati
 - Identity: Entra ID (Managed Identities)
 - Security Ops: SIEM integration (export diagnostic logs)
 - Downstream Analytics: Synapse / Fabric (Phase 2)
-- Internal Transaction Processors: Consume routing messages (claims, eligibility, enrollment, remittance services)
-- Outbound Acknowledgment Flow: Consumes subsystem outcomes to build TA1/999/271/277/835 responses
+- **Trading Partners (Internal and External)**: All partners consume routing messages and send responses/acknowledgments:
+  - **External Partners**: Traditional healthcare trading partners (payers, providers, clearinghouses)
+  - **Internal Partners**: Internal systems treated as trading partners with configured endpoints:
+    - Claims Processing Partner (837, 276, 277 transactions)
+    - Eligibility Service Partner (270, 271 transactions)
+    - Enrollment Management Partner (834 transactions with event sourcing)
+    - Remittance Processing Partner (835, 820 transactions)
+- Outbound Acknowledgment Flow: Aggregates partner outcome signals to build TA1/999/271/277/835 responses
 
 ## 13. Assumptions
 
@@ -219,10 +240,11 @@ Reference `14-enterprise-scheduler-spec.md` for the detailed design, configurati
 - Are legal hold / immutability policies (Blob Immutable Storage) mandated for all raw EDI files? Duration?
 - Required retention period (e.g., 7 years)?
 - Need for near real-time downstream transformations in Phase 1?
-- Volume projections per partner for sizing cost model?
+- Volume projections per trading partner (external and internal) for sizing cost model?
 - Service Bus namespace multi-tenant vs. dedicated? (Throughput & isolation)
 - Preferred orchestrator for outbound (ADF vs. Durable Functions)?
 - Control number store implementation (Table vs. Durable entity)?
+- Configuration approach for internal trading partners vs external (same schema or extended)?
 
 ---
 (Additional sections—security, data flow, IaC, SDLC—will be in companion documents.)
@@ -433,19 +455,19 @@ This matrix clarifies which architectural components handle each transaction typ
 
 ### B.1 Transaction Processing & Acknowledgment Responsibility
 
-| Inbound Transaction | Ingestion & Validation | Routing | Destination System | Technical Ack Generator | Business Response Generator | Notes |
-|---------------------|------------------------|---------|-------------------|------------------------|----------------------------|-------|
-| **834 (Enrollment)** | Core Platform (ADF) | Router Function | Enrollment Management (Event Sourcing) | Core (TA1 if structural), Core (999) | N/A (internal state changes only) | Large file handling; concurrent member processing |
-| **837 (Claims)** | Core Platform (ADF) | Router Function | Claims Processing | Core (TA1, 999) | Outbound Orchestrator (277CA) | Multi-ST fan-out; control number critical |
-| **835 (Remittance)** | Core Platform (ADF) | Router Function | Remittance Processing | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring; stricter ACL |
-| **270 (Eligibility Inquiry)** | Core Platform (ADF) | Router Function | Eligibility Service | Core (999) | Outbound Orchestrator (271) | Low latency path; p95 < 2 min target |
+| Inbound Transaction | Ingestion & Validation | Routing | Trading Partner Recipient | Technical Ack Generator | Business Response Generator | Notes |
+|---------------------|------------------------|---------|---------------------------|------------------------|----------------------------|-------|
+| **834 (Enrollment)** | Core Platform (ADF) | Router Function | Enrollment Management Partner (configured internal partner with event sourcing) | Core (TA1 if structural), Core (999) | N/A (internal state changes only) | Large file handling; concurrent member processing |
+| **837 (Claims)** | Core Platform (ADF) | Router Function | Claims Processing Partner (configured internal partner) | Core (TA1, 999) | Outbound Orchestrator (277CA) | Multi-ST fan-out; control number critical |
+| **835 (Remittance)** | Core Platform (ADF) | Router Function | Remittance Processing Partner (configured internal partner) | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring; stricter ACL |
+| **270 (Eligibility Inquiry)** | Core Platform (ADF) | Router Function | Eligibility Service Partner (configured internal partner) | Core (999) | Outbound Orchestrator (271) | Low latency path; p95 < 2 min target |
 | **271 (Eligibility Response)** | Core Platform (ADF) | Optional (analytics) | Analytics (optional) | Core (999) | N/A (already response) | Stored for trace; may skip routing if configured |
-| **276 (Claim Status Inquiry)** | Core Platform (ADF) | Router Function | Claims Status Service | Core (999) | Outbound Orchestrator (277) | Parity with 270 latency |
-| **277 (Claim Status)** | Core Platform (ADF) | Router Function | Claims Status Service | Core (999) | Outbound Orchestrator (835 eventual) | Drives remittance SLA timer |
-| **277CA (Claim Ack)** | Core Platform (ADF) | Router Function | Claims Processing | Core (999) | Outbound Orchestrator (277 lifecycle updates) | Marks claim validation stage |
-| **278 (Prior Auth Request)** | Core Platform (ADF) | Router Function | Prior Authorization Service | Core (999) | Outbound Orchestrator (278 Response) | Priority escalation via partner config |
+| **276 (Claim Status Inquiry)** | Core Platform (ADF) | Router Function | Claims Status Service Partner (configured internal partner) | Core (999) | Outbound Orchestrator (277) | Parity with 270 latency |
+| **277 (Claim Status)** | Core Platform (ADF) | Router Function | Claims Status Service Partner (configured internal partner) | Core (999) | Outbound Orchestrator (835 eventual) | Drives remittance SLA timer |
+| **277CA (Claim Ack)** | Core Platform (ADF) | Router Function | Claims Processing Partner (configured internal partner) | Core (999) | Outbound Orchestrator (277 lifecycle updates) | Marks claim validation stage |
+| **278 (Prior Auth Request)** | Core Platform (ADF) | Router Function | Prior Authorization Service Partner (configured internal partner) | Core (999) | Outbound Orchestrator (278 Response) | Priority escalation via partner config |
 | **278 (Prior Auth Response)** | Core Platform (ADF) | Router Function (analytics) | Analytics (optional) | Core (999 if errors) | N/A (already response) | Completion of auth lifecycle |
-| **820 (Payroll Deduction)** | Core Platform (ADF) | Router Function | Finance/Remittance | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring |
+| **820 (Payroll Deduction)** | Core Platform (ADF) | Router Function | Finance/Remittance Partner (configured internal partner) | Core (TA1, 999) | N/A (inbound only) | Financial variance monitoring |
 | **824 (Application Advice)** | Core Platform (ADF) | Optional (analytics) | Analytics | Core (999) | N/A (already application response) | Generated internally for business rejects; may skip routing |
 | **999 (Functional Ack - inbound)** | Core Platform (ADF) | Router Function | Ack Correlation Service | Core (TA1 if envelope error) | N/A | Correlates to outbound files; updates validation metrics |
 | **TA1 (Interchange Ack - inbound)** | Core Platform (ADF) | Ack Correlation Service | Ack Correlation Service | N/A (we received it) | N/A | Immediate structural failure escalation |
@@ -456,7 +478,9 @@ This matrix clarifies which architectural components handle each transaction typ
 |-----------|---------------|------------|
 | **Core Platform (ADF)** | File ingestion, structural validation, raw persistence, metadata extraction | Azure Data Factory + Storage Events |
 | **Router Function** | Envelope parsing (ISA/GS/ST), routing message publication | Azure Function (HTTP/Event trigger) |
-| **Destination Systems** | Business logic processing, domain-specific data persistence, outcome signal generation | Independent applications (Enrollment: Event Sourcing + SQL; Claims: TBD; Eligibility: TBD; Remittance: TBD) |
+| **Trading Partner Integration Adapters** | Bidirectional data transformation and protocol adaptation for all partners (external and internal) | Azure Functions, Service Bus, partner-specific connectors |
+| **Trading Partners (External)** | External healthcare organizations sending/receiving EDI (payers, providers, clearinghouses) | SFTP, AS2, API endpoints |
+| **Trading Partners (Internal)** | Internal systems configured as partners with dedicated endpoints and processing logic | Service Bus subscriptions, internal APIs, databases |
 | **Core Technical Ack Generator** | TA1 (interchange errors), 999 (syntax validation) generation immediately post-ingestion | Core Platform (ADF activity or inline Function) |
 | **Outbound Orchestrator** | Business response aggregation (271, 277CA, 278R, 835), control number management, file assembly | Azure Function (Timer/Durable) + Azure SQL (control store) |
 | **Ack Correlation Service** | Tracks inbound acks (999, TA1) received from partners, correlates to outbound files | Analytics / Monitoring (Log Analytics queries) |
