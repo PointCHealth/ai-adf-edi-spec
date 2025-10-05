@@ -27,15 +27,50 @@ Key value: Standardized, event‑driven ingestion and routing with auditable con
 
 ## 3. High-Level Component Inventory
 
+### 3.5 Trading Partner Abstraction (Core Architectural Principle)
+
+**Core Principle**: ALL data sources and destinations (external healthcare organizations AND internal systems) are uniformly modeled as **Trading Partners** with configured endpoints and integration adapters.
+
+| Partner Type | Connection Method | Examples | Configuration |
+|--------------|------------------|----------|---------------|
+| **EXTERNAL** | SFTP, AS2, REST API | Medicare, Commercial Payers, Clearinghouses | `partners.json`: partnerType=EXTERNAL, endpoint.type=SFTP |
+| **INTERNAL** | Service Bus, Database, Internal API | Enrollment, Claims, Eligibility, Remittance | `partners.json`: partnerType=INTERNAL, endpoint.type=SERVICE_BUS |
+
+**Benefits of Unified Model**:
+- Eliminates architectural distinction between "internal" and "external" systems
+- Enables consistent integration patterns, monitoring, and lifecycle management  
+- Supports flexible internal system architectures (event sourcing, CRUD, custom patterns)
+- Simplifies operational model (one partner onboarding process)
+- Allows independent scaling and evolution of each trading partner
+
+**Integration Adapter Pattern**: Each trading partner connects via a bidirectional adapter (see Doc 13) that:
+- Subscribes to filtered Service Bus routing messages
+- Transforms data to/from partner-specific formats  
+- Implements partner protocol (SFTP, API, database, queue)
+- Writes outcome signals to outbound staging for acknowledgment generation
+- Operates with loose coupling to core platform
+
+**Partner Configuration**: Each trading partner defined in `config/partners/partners.json` with:
+- Unique partner code and metadata
+- Partner type (EXTERNAL or INTERNAL)
+- Data flow direction (INBOUND, OUTBOUND, BIDIRECTIONAL)
+- Endpoint type and connection details
+- Integration adapter type (EVENT_SOURCING, CRUD, CUSTOM)
+- SLA targets and business rules
+
+See `config/partners/partners.schema.json` for complete configuration schema.
+
+---
+
 | Layer | Purpose | Representative Azure Services / Artifacts |
 |-------|---------|--------------------------------------------|  
 | Ingestion & Landing | Receive partner SFTP drops into secure storage | SFTP (managed service or partner-managed) -> ADLS Gen2 (raw container) |
 | Event Orchestration | Trigger downstream pipeline upon file arrival | Azure Data Factory (ADF) event pipeline, Storage Events |
 | Validation & Metadata | Interchange/envelope parsing, syntax validation, metadata extraction (control numbers, transaction set IDs) | ADF activities, Custom Function(s) or Data Flow (future) |
 | Routing | Classify & dispatch messages to appropriate trading partner endpoints | Azure Function (Router), Service Bus Topic (`edi-routing`) + subscriptions with rule filters |
-| **Trading Partner Integration** | **Bidirectional adapters for all trading partners** | **Azure Functions (mappers/connectors), Service Bus subscriptions, partner-specific protocol adapters** |
+| **Partner Integration (Adapters)** | Bidirectional format transformation and protocol adaptation | **Azure Functions (C# standardized), Service Bus, SFTP/API connectors. Maps between platform X12 format and partner-specific formats (XML, JSON, CSV, database). Configured per partner type and endpoint. See Doc 13 for mapper/connector patterns and centralized mapping rules repository.** | **Azure Functions (mappers/connectors), Service Bus subscriptions, partner-specific protocol adapters** |
 | **Trading Partners (External)** | **External healthcare organizations** | **Payers, providers, clearinghouses via SFTP/AS2/API** |
-| **Trading Partners (Internal)** | **Internal systems configured as partners** | **Enrollment Management (event sourcing), Eligibility Service, Claims Processing, Remittance - each with configured endpoints** |
+| **Trading Partners (Internal)** | **Internal systems configured as partners** | **Enrollment Management (event sourcing - see Doc 11), Eligibility Service, Claims Processing, Remittance - each with configured endpoints. Architecture choice varies by partner: event sourcing, CRUD, or custom patterns.** |
 | Outbound Orchestration | Generate and publish acknowledgments / response artifacts (TA1, 999, 277CA) from trading partner outcomes | Azure Function (Outbound Orchestrator), Service Bus, Storage staging |
 | Control Number Management | Detect gaps / duplicates; maintain sequence integrity | Azure SQL Database with optimistic concurrency + KQL queries |
 | Observability & SLA | Latency, error mix, reject rates, backlog | Azure Monitor / Log Analytics (custom tables), KQL queries under `queries/kusto/` |
@@ -116,6 +151,68 @@ Design Tenets for AI:
 1. Keep modules atomic (single primary resource + outputs for composition).
 2. Derive naming from central prefix + environment + workload segment.
 3. Emit standardized tags (see Tagging Governance spec) from each module root.
+
+### 7.4 GitHub Actions CI/CD (Implementation Details)
+
+**Authentication**: OpenID Connect (OIDC) federated identity - passwordless, short-lived tokens with automatic rotation. No service principal secrets stored in GitHub.
+
+**Federated Credential Configuration**:
+- Issuer: `https://token.actions.githubusercontent.com`
+- Subject patterns: `repo:vincemic/ai-adf-edi-spec:environment:prod` (environment-scoped)
+- Audience: `api://AzureADTokenExchange`
+
+**Workflow Catalog**:
+| Workflow | Trigger | Purpose | Key Actions |
+|----------|---------|---------|-------------|
+| `infra-ci.yml` | Pull Request | Validation & what-if | Bicep build/lint, PSRule scan, Checkov scan, what-if deployment, PR comment |
+| `infra-cd.yml` | Push to main / Manual | Environment deployments | Deploy to dev (auto), test (gated), prod (gated + change ticket) |
+| `function-ci.yml` | PR (paths: src/functions/**) | Function build & test | Build, unit tests, code coverage, static analysis, package upload |
+| `function-cd.yml` | Manual dispatch | Function deployment | Deploy function packages to environments |
+| `adf-export.yml` | Weekly schedule / Manual | ADF pipeline versioning | Export ADF pipelines to JSON, create PR with changes |
+| `drift-detection.yml` | Nightly schedule | Infrastructure drift | What-if comparison, create issue if drift detected |
+| `security-scan.yml` | Push / PR / Weekly | Dependency & code security | Dependency review, CodeQL analysis, SARIF upload |
+| `config-validation.yml` | PR (paths: config/**) | Partner config validation | Schema validation (AJV), format checks, policy compliance |
+
+**Environment Protection Rules**:
+| Environment | Auto-Deploy | Approval Required | Wait Timer | Additional Gates |
+|-------------|-------------|------------------|------------|------------------|
+| **dev** | ✅ (on merge to main) | None | None | None |
+| **test** | ❌ | 1 reviewer (data-eng-team) | None | Policy compliance evaluation |
+| **prod** | ❌ | 2 reviewers (security + platform-lead) | 5 minutes | Change ticket validation + security gate |
+
+**Deployment Flow**:
+```text
+PR Created → infra-ci.yml (validate) → Merge to main → 
+  deploy-dev (auto) → smoke tests → 
+    deploy-test (manual trigger + 1 approval) → integration tests →
+      deploy-prod (manual trigger + 2 approvals + change ticket) → post-deploy validation
+```
+
+**Artifact Management**:
+- Compiled Bicep templates: 90-day retention
+- Function packages: 90-day retention (release artifacts indefinite)
+- Deployment manifests: Indefinite retention
+- What-if outputs: 14-day retention
+
+**Security Features**:
+- Secret scanning with push protection
+- Dependency review (fail on high severity)
+- SARIF uploads to Security tab (PSRule, Checkov, CodeQL)
+- Signed commits required on main branch
+- Code owners enforcement (CODEOWNERS file)
+
+**Performance Optimizations**:
+- Artifact caching for dependencies (`actions/cache@v3`)
+- Conditional job execution (skip unnecessary environments)
+- Matrix strategy for parallel function builds
+- Reusable composite actions (azure-login, bicep-whatif)
+
+**Cost Management**:
+- GitHub-hosted runners: 2,000 minutes/month free (private repos)
+- Artifact retention: 30 days (cost-optimized); 90 days for releases
+- Self-hosted runners considered for high-volume scenarios
+
+**Reference**: See Doc 04a for complete GitHub Actions implementation guide including troubleshooting, operational procedures, and workflow examples.
 
 ---
 
@@ -200,7 +297,94 @@ Future Hardening:
 
 ---
 
-## 13. Tagging & Governance (Summary)
+## 11. Control Number Management (Comprehensive Specification)
+
+**Decision**: Azure SQL Database with optimistic concurrency control
+
+**Purpose**: Maintain monotonic, gap-free sequence numbers for all outbound EDI acknowledgments and responses (ISA13, GS06, ST02) with audit trail and collision detection.
+
+**Key Capabilities**:
+- **Sequence Generation**: Monotonic ISA (interchange), GS (functional group), and ST (transaction set) control numbers
+- **Concurrency Control**: Optimistic locking using SQL ROWVERSION for collision-free multi-threaded access
+- **Gap Detection**: Automated queries identify missing sequences; alerting on anomalies
+- **Audit Trail**: Complete history of all issued control numbers with correlation to outbound files
+- **Rollover Handling**: Coordinated reset procedures when approaching max values (999999999)
+- **Disaster Recovery**: Active geo-replication to paired region with failover procedures
+
+**Performance Characteristics**:
+| Metric | Target | Notes |
+|--------|--------| ------ |
+| **Acquisition Latency** | < 50ms p95 | Single row read + update with index |
+| **Concurrent Throughput** | 100+ TPS | Optimistic concurrency handles contention |
+| **Retry Rate** | < 5% | Exponential backoff minimizes collisions |
+| **Gap Detection Query** | < 5 sec | Run off-hours; indexed on IssuedUtc |
+
+**Data Model**:
+```sql
+CREATE TABLE [dbo].[ControlNumberCounters] (
+    [CounterId] INT IDENTITY(1,1) PRIMARY KEY,
+    [PartnerCode] NVARCHAR(15) NOT NULL,
+    [TransactionType] NVARCHAR(10) NOT NULL,
+    [CounterType] NVARCHAR(20) NOT NULL, -- 'ISA', 'GS', 'ST'
+    [CurrentValue] BIGINT NOT NULL DEFAULT 1,
+    [MaxValue] BIGINT NOT NULL DEFAULT 999999999,
+    [RowVersion] ROWVERSION NOT NULL, -- Optimistic concurrency
+    CONSTRAINT [UQ_Counter] UNIQUE ([PartnerCode], [TransactionType], [CounterType])
+);
+```
+
+**Concurrency Model**: 
+- Read current value + ROWVERSION
+- Calculate next value (CurrentValue + 1)
+- Update with WHERE clause checking ROWVERSION unchanged
+- If @@ROWCOUNT = 0, retry with exponential backoff (max 5 attempts)
+- On success, insert audit record
+
+**Gap Detection**: Scheduled query compares issued control numbers for monotonic sequence:
+```sql
+WITH NumberedAudit AS (
+    SELECT ControlNumberIssued,
+           LAG(ControlNumberIssued) OVER (ORDER BY ControlNumberIssued) AS PreviousNumber
+    FROM [dbo].[ControlNumberAudit]
+    WHERE IssuedUtc >= DATEADD(DAY, -30, GETUTCDATE())
+)
+SELECT PreviousNumber AS GapStart, ControlNumberIssued AS GapEnd,
+       (ControlNumberIssued - PreviousNumber - 1) AS GapSize
+FROM NumberedAudit
+WHERE ControlNumberIssued - PreviousNumber > 1;
+```
+
+**Retention Policy**:
+- Active counters: Indefinite (operational necessity)
+- Audit history: 7 years (HIPAA compliance alignment)
+- Archive to cold storage after 2 years
+
+**Security Controls**:
+- Transparent Data Encryption (TDE) enabled
+- Outbound Orchestrator Managed Identity with `db_datawriter` + `db_datareader` roles only
+- Private endpoint; no public access
+- Connection string in Key Vault
+- Azure SQL Auditing logs all UPDATE operations
+
+**Monitoring & Alerts**:
+| Condition | Threshold | Action |
+|-----------|-----------|--------|
+| Retry rate > 10% | 15 min sustained | Notify platform engineering |
+| Gap detected | Any occurrence | Critical alert + runbook link |
+| Counter > 80% max value | Single check | Warning + coordinate reset |
+| Acquisition latency p95 > 200ms | 30 min | Investigate database performance |
+
+**Disaster Recovery**:
+- Automated backups: Point-in-Time Restore up to 35 days
+- Active geo-replication to paired region (read-only secondary)
+- Manual failover trigger; resume from last known good value in secondary
+- Post-failover validation: Run gap detection query; document any drift
+
+**Reference**: See Doc 08 §14 for complete specification including stored procedures, rollover procedures, partner onboarding initialization, and operational runbooks.
+
+---
+
+### A.13 Transaction to Response Matrix (Summary)
 
 Taxonomy defined in `09-tagging-governance-spec.md` (referenced, not duplicated here) – AI actions impacting IaC must preserve required tags (ownership, environment, dataSensitivity, costCenter, complianceScope, workload, component).
 
