@@ -5,7 +5,7 @@ Create GitHub Actions workflows for Bicep infrastructure validation (CI) and dep
 
 ## Prerequisites
 - Azure OIDC authentication configured
-- GitHub secrets set: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+- GitHub secrets set: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID_DEV, AZURE_SUBSCRIPTION_ID_PROD
 - GitHub environments created: dev, test, prod
 - Bicep templates ready (or will be created separately)
 
@@ -158,7 +158,7 @@ Authentication pattern to use:
   with:
     client-id: ${{ secrets.AZURE_CLIENT_ID }}
     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    subscription-id: ${{ secrets[matrix.subscriptionIdSecret] }}  # AZURE_SUBSCRIPTION_ID_DEV for dev/test, AZURE_SUBSCRIPTION_ID_PROD for prod
 ```
 
 Common environment variables to set:

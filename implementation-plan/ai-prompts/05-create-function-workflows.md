@@ -180,7 +180,7 @@ Authentication:
   with:
     client-id: ${{ secrets.AZURE_CLIENT_ID }}
     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    subscription-id: ${{ secrets[matrix.subscriptionIdSecret] }}  # AZURE_SUBSCRIPTION_ID_DEV for dev/test, AZURE_SUBSCRIPTION_ID_PROD for prod
 ```
 
 Build steps:
