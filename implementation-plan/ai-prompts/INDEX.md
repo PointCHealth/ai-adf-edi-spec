@@ -6,6 +6,9 @@ Quick reference guide for all AI prompts available for EDI Platform implementati
 
 This directory contains AI prompts that automate various aspects of the EDI Platform setup and implementation. Each prompt is designed to work with GitHub Copilot, ChatGPT, or similar AI assistants.
 
+**Architecture:** Five strategic repositories for independent deployment and scalability
+**Timeline:** 18-week AI-accelerated implementation
+
 ## 🚀 Quick Start
 
 1. **Start with the README**: Read [README.md](README.md) for the complete implementation roadmap
@@ -19,8 +22,8 @@ This directory contains AI prompts that automate various aspects of the EDI Plat
 
 | # | Prompt File | Purpose | Type |
 |---|------------|---------|------|
-| 01 | [01-create-monorepo-structure.md](01-create-monorepo-structure.md) | Create complete directory structure and initial files | 🤖 Automated |
-| 02 | [02-create-codeowners.md](02-create-codeowners.md) | Generate CODEOWNERS file for automatic reviewer assignment | 🤖 Automated |
+| 01 | [01-create-monorepo-structure.md](01-create-monorepo-structure.md) | Create five strategic repositories and directory structures | 🤖 Automated |
+| 02 | [02-create-codeowners.md](02-create-codeowners.md) | Generate CODEOWNERS files for automatic reviewer assignment | 🤖 Automated |
 | 03 | [03-configure-github-variables.md](03-configure-github-variables.md) | Script to set GitHub repository variables | 🤖 Automated |
 
 ### Phase 2: CI/CD Workflows (Week 2-3)

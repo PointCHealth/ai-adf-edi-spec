@@ -1,123 +1,255 @@
-# AI Prompt: Create Monorepo Structure
+# AI Prompt: Create Strategic Repository Structure
 
 ## Objective
-Clone the EDI platform repository and create the complete monorepo directory structure as specified in the implementation plan.
+Create five strategic repositories for the EDI platform and initialize each with the appropriate directory structure as specified in the implementation plan.
 
 ## Prerequisites
-- Repository `edi-platform-monorepo` already created in GitHub
+- GitHub organization `PointCHealth` exists with appropriate permissions
+- GitHub CLI (`gh`) installed and authenticated
 - Git installed and configured locally
-- GitHub authentication configured (SSH or HTTPS)
+- VS Code with multi-root workspace support
 
 ## Prompt
 
 ```
-I need you to help me set up the complete monorepo structure for the EDI Healthcare Platform project.
+I need you to help me set up five strategic repositories for the EDI Healthcare Platform project.
 
 Context:
-- Repository: PointCHealth/edi-platform-monorepo
+- Organization: PointCHealth
 - Project: Healthcare EDI transaction processing platform using Azure Data Factory, Azure Functions, and Service Bus
-- Architecture: Event-driven, microservices-based
+- Architecture: Event-driven, microservices-based, strategic multi-repository approach
+- Timeline: 18-week AI-accelerated implementation
 
-Please perform the following tasks:
+Please create these FIVE repositories with their respective structures:
 
-1. Create the complete directory structure with these top-level folders:
-   - .github/ (workflows, actions, ISSUE_TEMPLATE, PULL_REQUEST_TEMPLATE)
-   - infra/ (bicep modules, sql scripts, terraform if needed)
-   - functions/ (all Azure Function projects)
-   - shared/ (shared libraries and common code)
-   - config/ (partner configurations, routing rules, mapping definitions)
-   - tests/ (integration tests, load tests, test data)
-   - docs/ (API docs, architecture diagrams, runbooks)
-   - scripts/ (deployment scripts, utility scripts)
-   - ai-prompts/ (AI prompt library for development tasks)
+---
+## Repository 1: edi-platform-core
 
-2. Under functions/, create subdirectories for:
-   - InboundRouter.Function
-   - OutboundOrchestrator.Function
-   - X12Parser.Function
-   - MapperEngine.Function
-   - ControlNumberGenerator.Function
-   - FileArchiver.Function
-   - NotificationService.Function
+Purpose: Core infrastructure, shared libraries, router, and scheduler
 
-3. Under infra/, create subdirectories for:
-   - bicep/modules (individual resource modules)
-   - bicep/main (main orchestration templates)
-   - sql/schemas
-   - sql/migrations
-   - sql/stored-procedures
+Directory structure:
+```
+edi-platform-core/
+├── .github/
+│   ├── workflows/ (infra CI/CD, core function workflows)
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
+├── infra/
+│   └── bicep/
+│       ├── main.bicep
+│       ├── modules/ (storage, key-vault, service-bus, sql, etc.)
+│       └── parameters/ (dev/test/prod.parameters.json)
+├── shared/
+│   ├── EDI.Core/
+│   ├── EDI.X12/
+│   ├── EDI.Configuration/
+│   ├── EDI.Storage/
+│   ├── EDI.Messaging/
+│   └── EDI.Logging/
+├── functions/
+│   ├── InboundRouter.Function/
+│   └── EnterpriseScheduler.Function/
+├── tests/
+│   ├── Integration.Tests/
+│   └── Unit.Tests/
+├── docs/
+│   ├── architecture/
+│   ├── api/
+│   └── cross-repo-guide.md
+├── scripts/
+├── README.md
+└── .gitignore
+```
 
-4. Under shared/, create subdirectories for:
-   - EDI.Core (core abstractions and interfaces)
-   - EDI.X12 (X12 parsing and validation)
-   - EDI.Configuration (configuration management)
-   - EDI.Storage (storage abstractions)
-   - EDI.Messaging (Service Bus abstractions)
+---
+## Repository 2: edi-mappers
 
-5. Under tests/, create subdirectories for:
-   - Integration.Tests
-   - Load.Tests
-   - TestData (sample EDI files, test configurations)
+Purpose: All EDI transaction mapper functions
 
-6. Create a comprehensive .gitignore file that includes:
+Directory structure:
+```
+edi-mappers/
+├── .github/
+│   └── workflows/ (mapper CI/CD)
+├── functions/
+│   ├── EligibilityMapper.Function/ (270/271)
+│   ├── ClaimsMapper.Function/ (837/277)
+│   ├── EnrollmentMapper.Function/ (834)
+│   └── RemittanceMapper.Function/ (835)
+├── shared/
+│   └── EDI.Mappers.Common/
+├── tests/
+│   ├── Integration.Tests/
+│   └── TestData/ (sample transactions)
+├── README.md
+└── .gitignore
+```
+
+---
+## Repository 3: edi-connectors
+
+Purpose: Trading partner connector functions
+
+Directory structure:
+```
+edi-connectors/
+├── .github/
+│   └── workflows/ (connector CI/CD)
+├── functions/
+│   ├── SftpConnector.Function/
+│   ├── ApiConnector.Function/
+│   └── DatabaseConnector.Function/
+├── shared/
+│   └── EDI.Connectors.Common/
+├── tests/
+│   ├── Integration.Tests/
+│   └── TestData/
+├── README.md
+└── .gitignore
+```
+
+---
+## Repository 4: edi-partner-configs
+
+Purpose: Partner metadata and routing configurations
+
+Directory structure:
+```
+edi-partner-configs/
+├── .github/
+│   └── workflows/ (config validation)
+├── partners/
+│   ├── anthem/
+│   │   ├── partner.json
+│   │   ├── mappings/
+│   │   └── credentials/ (encrypted)
+│   └── template/
+├── schemas/
+│   ├── partner-schema.json
+│   └── mapping-schema.json
+├── routing/
+│   └── routing-rules.json
+├── README.md
+└── .gitignore
+```
+
+---
+## Repository 5: edi-data-platform
+
+Purpose: ADF pipelines and SQL databases
+
+Directory structure:
+```
+edi-data-platform/
+├── .github/
+│   └── workflows/ (ADF and SQL CI/CD)
+├── adf/
+│   ├── pipelines/
+│   ├── datasets/
+│   ├── linkedServices/
+│   └── triggers/
+├── sql/
+│   ├── ControlNumbers/
+│   │   ├── schemas/
+│   │   ├── tables/
+│   │   └── stored-procedures/
+│   └── EventStore/
+│       ├── schemas/
+│       ├── tables/
+│       └── stored-procedures/
+├── tests/
+├── README.md
+└── .gitignore
+```
+
+---
+
+For EACH repository:
+
+1. Create the repository in GitHub: `gh repo create PointCHealth/<repo-name> --private`
+
+2. Create comprehensive .gitignore with:
    - .NET specific ignores (bin/, obj/, *.user, *.suo)
    - Azure Functions ignores (local.settings.json, __blobstorage__, __queuestorage__, __azurite_db*)
-   - VS Code ignores (.vscode/ except for recommended workspace settings)
-   - Terraform ignores (*.tfstate, .terraform/)
+   - VS Code ignores (.vscode/ except workspace settings)
    - OS ignores (Thumbs.db, .DS_Store)
-   - Sensitive files (*.pfx, *.p12, *.key, appsettings.*.json except templates)
+   - Sensitive files (*.pfx, *.p12, *.key, secrets.json)
 
-7. Add .gitkeep files to empty directories so they're tracked in Git
-
-8. Create a comprehensive README.md at the root with:
-   - Project overview
-   - Architecture diagram link
+3. Create README.md with:
+   - Repository purpose
+   - Links to other repositories in the stack
+   - Link to centralized docs in edi-platform-core
    - Quick start guide
-   - Directory structure explanation
-   - Development setup requirements
-   - How to run locally
+   - Development setup
    - How to deploy
-   - Contributing guidelines
-   - Links to detailed documentation
 
-Please create all necessary files and directories, and provide me with:
-1. A summary of what was created
-2. The git commands to commit and push this initial structure
-3. Any recommendations for next steps
+4. Add .gitkeep files to maintain empty directories
+
+5. Create initial commit and push
+
+6. Create VS Code multi-root workspace file: `edi-platform.code-workspace`
+
+Please provide:
+1. Complete bash/PowerShell script to create all repositories
+2. Multi-root workspace configuration
+3. Summary of what was created
+4. Next steps for team setup
 ```
 
 ## Expected Outcome
 
 After running this prompt, you should have:
-- ✅ Complete directory structure created locally
-- ✅ .gitignore file configured
-- ✅ README.md with project overview
+- ✅ Five repositories created in GitHub under PointCHealth organization
+- ✅ Each repository initialized with appropriate directory structure
+- ✅ .gitignore files configured in each repository
+- ✅ README.md files with repository-specific documentation
+- ✅ Cross-repository references documented
+- ✅ Multi-root VS Code workspace file created
 - ✅ All directories tracked in Git (via .gitkeep)
-- ✅ Ready to commit and push initial structure
+- ✅ Initial commits pushed to all repositories
 
 ## Validation Steps
 
-1. Verify directory structure:
+1. Verify all repositories created:
    ```powershell
+   gh repo list PointCHealth --limit 100 | Select-String "edi-"
+   ```
+
+2. Clone all repositories locally:
+   ```powershell
+   mkdir c:\repos\edi-platform
+   cd c:\repos\edi-platform
+   gh repo clone PointCHealth/edi-platform-core
+   gh repo clone PointCHealth/edi-mappers
+   gh repo clone PointCHealth/edi-connectors
+   gh repo clone PointCHealth/edi-partner-configs
+   gh repo clone PointCHealth/edi-data-platform
+   ```
+
+3. Open multi-root workspace in VS Code:
+   ```powershell
+   code edi-platform.code-workspace
+   ```
+
+4. Verify structure in each repository:
+   ```powershell
+   cd edi-platform-core
    tree /F /A
    ```
 
-2. Check .gitignore is working:
+5. Test .gitignore in one repository:
    ```powershell
-   # Create a test file that should be ignored
-   echo "test" > functions/InboundRouter.Function/local.settings.json
+   cd edi-platform-core\functions\InboundRouter.Function
+   echo "test" > local.settings.json
+   cd ..\..
    git status  # Should not show local.settings.json
-   ```
-
-3. Commit and push:
-   ```powershell
-   git add .
-   git commit -m "feat: Initialize monorepo structure"
-   git push origin main
    ```
 
 ## Next Steps
 
 After successful completion:
-- Proceed to [02-create-codeowners.md](02-create-codeowners.md)
+- Proceed to [02-create-codeowners.md](02-create-codeowners.md) for each repository
+- Configure branch protection rules on all repositories
+- Set up GitHub secrets and variables [03-configure-github-variables.md](03-configure-github-variables.md)
 - Begin infrastructure template development [08-create-bicep-templates.md](08-create-bicep-templates.md)
+- Set up shared library packaging to Azure Artifacts

@@ -402,16 +402,48 @@ Mermaid `.mmd` sources under `docs/diagrams/` rendered to PNG via `scripts/gener
 
 ---
 
-## 15. Current Repository Gaps (Implementation Phase Pending)
+## 15. Implementation Readiness Status
 
-| Gap | Impact | Suggested AI Assistance |
-|-----|--------|------------------------|
-| Missing ADF pipeline JSON exports | Hard to bootstrap pipeline-as-code | Generate pipeline definitions scaffolds |
-| No actual Function code (Router, Outbound Orchestrator) | Specs not executable | Produce starter Azure Function (TypeScript/Python/C#) with config-driven rule loader |
-| No control number durable store | Potential gap detection latency | Propose minimal schema & integration layer |
-| Absent synthetic ingestion scripts | Hard to test end-to-end | Create PowerShell + Python sample file drop simulator |
-| Policy assignment IaC absent | Governance drift risk | Author Bicep/Policy module set + pipeline step |
-| No CI/CD YAML pipelines | Manual deployments | Scaffold GitHub Actions YAML referencing Bicep what-if + deployment gates |
+### 15.1 Completed Artifacts
+
+| Artifact | Status | Location |
+|----------|--------|----------|
+| Architecture Specifications | ✅ Complete | `docs/01-15*.md` |
+| Implementation Plan | ✅ Complete | `implementation-plan/00-40*.md` |
+| AI Prompt Library | ✅ Complete | `implementation-plan/ai-prompts/*.md` |
+| Infrastructure Specifications | ✅ Complete | `docs/04-iac-strategy-spec.md`, `docs/04a-github-actions-implementation.md` |
+| KQL Query Library | ✅ Complete | `queries/kusto/*.kql` |
+| Partner Configuration Schemas | ✅ Complete | `config/partners/*.json` |
+| Tagging & Governance | ✅ Complete | `docs/09-tagging-governance-spec.md` |
+
+### 15.2 Ready for AI-Driven Implementation
+
+**AI Prompt Catalog** (`implementation-plan/ai-prompts/`):
+- 01: Create 5 strategic repositories
+- 02: Generate CODEOWNERS files
+- 03: Configure GitHub variables
+- 04: Create infrastructure CI/CD workflows
+- 05: Create function CI/CD workflows
+- 06: Create monitoring workflows
+- 07: Create Dependabot configuration
+- 08: Create Bicep infrastructure templates
+- 09: Create Azure Function projects
+- 12: Create shared NuGet libraries
+- 13: Create partner configuration schema
+- 14: Create integration test suite
+- 15: Onboard trading partner (existing)
+
+**Estimated AI Code Generation Coverage**: 70-90% across all components
+
+### 15.3 Implementation Gaps Requiring Human Decision
+
+| Gap | Impact | Owner |
+|-----|--------|-------|
+| Azure subscription approval | Blocks Phase 0 | Finance/Procurement |
+| GitHub Enterprise licensing | Required for Copilot Enterprise | IT/Procurement |
+| Trading partner pilot selection | Affects Phase 3 timeline | Business Stakeholders |
+| HIPAA BAA execution | Required before production | Compliance/Legal |
+| Production deployment approval | Gates final go-live | Executive Sponsor |
 
 ---
 
@@ -482,96 +514,199 @@ AI producing code should surface when an assumption is material to its output.
 
 ## 15. Recommended Solution Structure
 
-### 15.1 Core Architecture Layers
+### 15.1 Strategic Multi-Repository Architecture
 
-The implementation should be structured around **5 core functional domains** with clean separation of concerns:
+**Decision**: Five strategic repositories for independent deployment, clear ownership, and operational scalability.
 
-| Layer | Purpose | Technology Stack | Repository Path |
-|-------|---------|------------------|----------------|
-| **Core Platform** | Foundation ingestion, storage, shared utilities | ADF, ADLS Gen2, Event Grid | `/src/platform/` |
-| **Routing & Event Hub** | Decoupling layer, message routing | Azure Functions, Service Bus | `/src/routing/` |
-| **Trading Partner Integration** | Bidirectional adapters for all trading partners | Azure Functions, protocol adapters | `/src/partners/` |
-| **Trading Partners** | Internal and external partner systems | Various (event sourcing, CRUD, custom) | Partner-managed or `/src/partners/internal/` |
-| **Outbound Assembly** | Acknowledgment generation | Durable Functions, Azure SQL | `/src/outbound/` |
-| **Cross-Cutting** | Security, observability, configuration | Log Analytics, Key Vault, Bicep | `/src/cross-cutting/` |
+**Timeline**: 18-week AI-accelerated implementation (vs. 28 weeks traditional)
 
-### 15.2 Implementation Phases
+| Repository | Purpose | Primary Components | Deployment Frequency |
+|------------|---------|-------------------|---------------------|
+| **edi-platform-core** | Core infrastructure, shared libraries, router, scheduler | Bicep IaC, NuGet libraries (HealthcareEDI.*), InboundRouter, EnterpriseScheduler | Low (stable foundation) |
+| **edi-mappers** | EDI transaction family mappers | EligibilityMapper (270/271), ClaimsMapper (837/277), EnrollmentMapper (834), RemittanceMapper (835) | Medium (per transaction type) |
+| **edi-connectors** | Trading partner protocol adapters | SftpConnector, ApiConnector, DatabaseConnector | Medium (per integration pattern) |
+| **edi-partner-configs** | Partner metadata, routing rules, mapping definitions | JSON schemas, partner configs, validation workflows | High (per partner onboarding) |
+| **edi-data-platform** | Data orchestration and storage | ADF pipelines, SQL databases (ControlNumbers, EventStore) | Low (stable after Phase 1) |
+
+### 15.2 Implementation Phases (AI-Accelerated)
 
 | Phase | Duration | Focus | Key Deliverables |
 |-------|----------|-------|------------------|
-| **Phase 1: Foundation** | Weeks 1-4 | Infrastructure, basic ingestion | Bicep modules, ADF pipelines, storage zones |
-| **Phase 2: Routing & First Trading Partner** | Weeks 5-8 | Event-driven routing, eligibility partner integration | Router Function, Service Bus, 270/271 processing |
-| **Phase 3: Scale & Additional Trading Partners** | Weeks 9-16 | Claims, enrollment, enhanced outbound | 837/834 processing, control number store, partner adapters |
-| **Phase 4: Production Readiness** | Weeks 17-20 | Security hardening, operations | HIPAA compliance, monitoring, DR strategy |
+| **Phase 0: Foundation** | Weeks 1-2 | Repository setup, CI/CD, Azure subscriptions | 5 repositories, GitHub Actions, OIDC auth, branch protection |
+| **Phase 1: Core Platform** | Weeks 3-6 | File ingestion, storage, basic validation | ADF pipelines, storage zones, Router Function, shared libraries |
+| **Phase 2: Routing Layer** | Weeks 7-10 | Service Bus routing, message distribution | Service Bus topics, routing rules, subscription filters |
+| **Phase 3: First Trading Partner** | Weeks 11-14 | Eligibility mapper/connector, basic acks | 270/271 processing, SFTP connector, 999 acknowledgments |
+| **Phase 4: Scale Partners** | Weeks 15-16 | Claims, enrollment, multiple partners | 837/834 processing, event sourcing, partner adapters |
+| **Phase 5: Outbound Assembly** | Weeks 17-18 | Control numbers, advanced acks, scheduler | Azure SQL counters, TA1/277CA, enterprise scheduler |
+| **Phase 6: Production Hardening** | Weeks 19-20 (overlap) | Security audit, performance, DR | HIPAA compliance, monitoring, operations runbooks |
 
-### 15.3 Repository Structure Recommendation
+**Time Savings**: 10 weeks (36% reduction) via AI-driven code generation, automated testing, and parallel workstreams.
+
+### 15.3 Repository Structure (Strategic Multi-Repo)
 
 ```text
-/
-├── docs/                         # (existing specs)
-├── src/
-│   ├── platform/                # Core ingestion & infrastructure
-│   ├── routing/                 # Message routing layer
-│   ├── partners/                # Trading partner integration adapters
-│   │   ├── internal/           # Internal partner implementations
-│   │   └── external/           # External partner protocol adapters
-│   ├── outbound/               # Acknowledgment assembly
-│   └── shared/                 # Common libraries
-├── infra/
-│   ├── bicep/                  # (existing modules)
-│   └── environments/           # Environment-specific configs
-├── tests/
-│   ├── unit/                   # Component tests
-│   ├── integration/            # Service integration tests
-│   └── e2e/                    # End-to-end scenarios
-└── .github/workflows/          # CI/CD pipelines
+edi-platform-core/
+├── infra/bicep/              # All Bicep infrastructure modules
+├── shared/                    # NuGet packages (HealthcareEDI.*)
+├── functions/                 # InboundRouter, EnterpriseScheduler
+├── tests/                     # Integration tests
+├── docs/                      # Cross-repo architecture docs
+└── .github/workflows/         # Core CI/CD pipelines
+
+edi-mappers/
+├── functions/                 # 4 mapper functions
+├── shared/                    # Mapper-specific utilities
+├── tests/                     # Mapper integration tests
+└── .github/workflows/         # Mapper CI/CD
+
+edi-connectors/
+├── functions/                 # 3 connector functions
+├── shared/                    # Connector-specific utilities
+├── tests/                     # Connector integration tests
+└── .github/workflows/         # Connector CI/CD
+
+edi-partner-configs/
+├── partners/                  # Partner JSON configurations
+├── schemas/                   # JSON schemas
+├── routing/                   # Routing rules
+└── .github/workflows/         # Config validation
+
+edi-data-platform/
+├── adf/                       # ADF pipeline definitions
+├── sql/                       # SQL database projects
+└── .github/workflows/         # Data platform CI/CD
 ```
 
+**Cross-Repository Coordination**:
+- Shared libraries published to Azure Artifacts (NuGet feed)
+- Documentation centralized in edi-platform-core/docs/
+- Multi-root VS Code workspace for AI context awareness
+- GitHub Actions reusable workflows for consistency
+
 ## 16. Quick Reference: File Map (AI Lookup)
+
+### 16.1 Current Repository (ai-adf-edi-spec)
 
 | Path | Category | AI Usage |
 |------|----------|----------|
 | `README.md` | Entry point | High-level index; keep consistent if adding docs |
 | `AI_PROJECT_OVERVIEW.md` | AI context | Central reasoning substrate (this file) |
+| `AI_PROMPTS_ALIGNMENT_REPORT.md` | Alignment status | Track prompt updates and misalignments |
 | `ACK_SLA.md` | SLA & KQL | Source for performance targets |
+| `implementation-plan/00-implementation-overview.md` | Master plan | Strategic approach, timeline, team structure |
+| `implementation-plan/ai-prompts/*.md` | AI prompts | Executable prompts for code generation |
 | `config/partners/partners.schema.json` | Schema | Validate partner configs pre-deploy |
 | `config/partners/partners.sample.json` | Example config | Basis for generating production variant |
 | `config/routing/routing-rules.json` | Routing rules | Feed Router Function logic |
-| `infra/bicep/modules/*.bicep` | IaC modules | Extend with new infra components |
+| `infra/bicep/modules/*.bicep` | IaC modules | Reference for generating infrastructure |
 | `queries/kusto/*.kql` | Observability queries | Transform into workbooks / alerts |
-| `docs/0*.md` | Detailed specs | Source-of-truth narratives |
+| `docs/01-15*.md` | Architecture specs | Source-of-truth narratives |
+| `docs/04a-github-actions-implementation.md` | CI/CD guide | Complete GitHub Actions implementation |
+
+### 16.2 Strategic Repositories (To Be Created)
+
+| Repository | Purpose | AI Prompt Reference |
+|------------|---------|--------------------|
+| `edi-platform-core` | Infrastructure, shared libraries, core functions | Prompts 08, 09, 12 |
+| `edi-mappers` | Transaction mappers | Prompt 09 |
+| `edi-connectors` | Protocol adapters | Prompt 09 |
+| `edi-partner-configs` | Partner configurations | Prompt 13 |
+| `edi-data-platform` | ADF and SQL | Prompt 08 |
 
 ---
 
-## 20. Next Recommended AI Actions (Structured Implementation)
+## 20. Next Recommended AI Actions (18-Week Implementation)
 
-### Phase 1 Actions (Foundation)
+### Phase 0: Foundation (Weeks 1-2)
 
-1. **Infrastructure Setup**: Generate Bicep modules for core services (Storage, ADF, Event Grid, Log Analytics) with proper tagging and security defaults.
-2. **CI/CD Pipeline**: Create GitHub Actions workflow for Bicep validation, deployment, and testing.
-3. **Core Ingestion**: Implement ADF pipeline templates for basic file validation and metadata extraction.
-4. **Observability Foundation**: Convert key KQL queries into Log Analytics custom tables and basic dashboards.
+**AI Prompts to Execute**:
+1. **01-create-strategic-repos-structure.md**: Create 5 repositories with proper structure
+2. **02-create-codeowners.md**: Generate CODEOWNERS for all repos
+3. **03-configure-github-variables.md**: Set up repository variables and secrets
+4. **04-create-infrastructure-workflows.md**: Generate Bicep CI/CD workflows
+5. **05-create-function-workflows.md**: Generate Function CI/CD workflows
+6. **06-create-monitoring-workflows.md**: Create drift detection and monitoring workflows
+7. **07-create-dependabot-config.md**: Configure automated dependency updates
 
-### Phase 2 Actions (Routing Layer)
+**Human Actions**:
+- Azure subscription provisioning
+- GitHub organization setup
+- Service principal creation with OIDC
+- Branch protection configuration
 
-1. **Router Function**: Generate Azure Function code for envelope parsing and Service Bus message publishing.
-2. **Service Bus Configuration**: Create Bicep modules for topics, subscriptions, and filtering rules with direction support.
-3. **First Trading Partner Integration**: Implement eligibility partner (270/271) integration adapter as proof of concept.
-4. **Basic Acknowledgments**: Generate 999 functional acknowledgment assembly logic.
+### Phase 1: Core Platform (Weeks 3-6)
 
-### Phase 3 Actions (Scale)
+**AI Prompts to Execute**:
+1. **08-create-bicep-templates.md**: Generate all infrastructure as code
+2. **12-create-shared-libraries.md**: Create 6 NuGet shared libraries
+3. **09-create-function-projects.md**: Create InboundRouter and EnterpriseScheduler functions
 
-1. **Claims Processing Partner**: Implement 837/277CA trading partner integration adapter with complex business logic patterns.
-2. **Control Number Store**: Create Azure SQL-based counter management with optimistic concurrency.
-3. **Event Sourcing Partner**: Implement enrollment management (834) using event sourcing pattern as internal trading partner.
-4. **Enhanced Outbound**: Complete acknowledgment lifecycle (TA1, 277CA, etc.) with SLA tracking and partner-specific delivery.
+**Implementation Tasks**:
+- Deploy infrastructure to dev environment
+- Publish shared libraries to Azure Artifacts
+- Implement ADF ingestion pipelines
+- Create Log Analytics custom tables
+- Build and deploy router function
 
-### Phase 4 Actions (Production)
+### Phase 2: Routing Layer (Weeks 7-10)
 
-1. **Security Hardening**: Implement HIPAA compliance controls, private endpoints, and RBAC policies.
-2. **Operational Excellence**: Create monitoring dashboards, alert rules, and incident response runbooks.
-3. **Partner Portal**: Generate self-service partner configuration and testing tools.
-4. **DR Strategy**: Implement multi-region backup and disaster recovery procedures.
+**AI Prompts to Execute**:
+1. **13-create-partner-config-schema.md**: Generate partner configuration schemas
+2. **14-create-integration-tests.md**: Create integration test suite
+
+**Implementation Tasks**:
+- Configure Service Bus topics and subscriptions
+- Implement routing logic with rule evaluation
+- Create first routing rules for eligibility
+- Deploy and test routing flow
+- Set up dead-letter queue handling
+
+### Phase 3: First Trading Partner (Weeks 11-14)
+
+**AI Prompts to Execute**:
+1. **15-onboard-trading-partner.md**: Create eligibility partner configuration
+
+**Implementation Tasks** (AI-Generated Code):
+- EligibilityMapper function (270/271)
+- SftpConnector function
+- Partner-specific mapping rules
+- Basic 999 acknowledgment generation
+- End-to-end integration tests
+
+### Phase 4-6: Scale & Production (Weeks 15-18)
+
+**AI-Generated Components**:
+- ClaimsMapper (837/277CA)
+- EnrollmentMapper (834) with event sourcing
+- RemittanceMapper (835)
+- ApiConnector and DatabaseConnector
+- Azure SQL control number store
+- TA1 and 277CA acknowledgment assembly
+- Comprehensive monitoring dashboards
+- Operations runbooks
+
+**Human Actions**:
+- Security audit and penetration testing
+- HIPAA compliance validation
+- Partner coordination and UAT
+- Production deployment approval
+- Operations team training
+
+### AI Code Generation Workflow
+
+1. **Select Prompt**: Choose from `implementation-plan/ai-prompts/`
+2. **Execute with Copilot**: Paste into GitHub Copilot Chat or Copilot Workspace
+3. **Review Output**: Validate generated code against specifications
+4. **Run Tests**: Execute validation steps from prompt
+5. **Commit**: Push to feature branch and create PR
+6. **CI/CD**: Automated testing and deployment
+7. **Iterate**: Refine based on feedback and test results
+
+**Expected AI Productivity**:
+- Code generation: 10x faster than manual coding
+- Test coverage: 85-90% AI-generated
+- Documentation: Auto-updated with code changes
+- Overall timeline: 36% reduction (18 weeks vs 28 weeks)
 
 ---
 
@@ -587,6 +722,7 @@ The implementation should be structured around **5 core functional domains** wit
 ## 22. Changelog (This File)
 
 - v1.0 (Initial): Consolidated architectural & operational context for AI enablement.
+- v2.0 (October 5, 2025): Updated for strategic multi-repository architecture, 18-week AI-accelerated timeline, comprehensive AI prompt library integration, and alignment with implementation-plan documentation.
 
 ---
 End of AI Context Overview.

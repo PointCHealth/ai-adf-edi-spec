@@ -2,36 +2,45 @@
 
 This guide outlines all tasks needed to get the EDI Platform implementation going in GitHub. Tasks are marked as either **[HUMAN REQUIRED]** or **[AI AUTOMATED]** with links to prompt files.
 
+**Timeline:** 18-week AI-accelerated implementation (vs. 28 weeks traditional approach)
+
 ---
 
 ## Phase 1: Repository & Access Setup (Week 1)
 
-### 1.1 Create Repository **[HUMAN REQUIRED]**
+### 1.1 Create GitHub Organization **[HUMAN REQUIRED]**
 
 **Why Human:** Requires GitHub organization owner permissions and strategic decisions.
 
 **Actions:**
-1. Navigate to GitHub → New Repository
-2. Name: `edi-platform-monorepo`
-3. Visibility: Private
-4. Initialize with: README.md
-5. Default branch: `main`
+1. Navigate to GitHub → New Organization (if needed)
+2. Organization name: `PointCHealth`
+3. Plan: GitHub Enterprise (for Copilot Enterprise)
+4. Configure organization settings
 
 **Prerequisites:**
-- GitHub organization admin access
-- Approved repository naming convention
+- GitHub account with organization creation permissions
+- Budget approval for GitHub Enterprise
 
 ---
 
-### 1.2 Clone Repository & Create Monorepo Structure **[AI AUTOMATED]**
+### 1.2 Create Strategic Repositories & Initialize Structure **[AI AUTOMATED]**
 
-**Prompt:** [01-create-monorepo-structure.md](01-create-monorepo-structure.md)
+**Prompt:** [01-create-strategic-repos-structure.md](01-create-monorepo-structure.md)
 
 **What it does:**
-- Clones the repository
-- Creates complete directory structure per spec
-- Adds `.gitkeep` files to maintain empty directories
-- Creates initial `.gitignore` file
+- Creates five strategic repositories in GitHub
+- Initializes directory structure in each repository
+- Creates initial `.gitignore` files
+- Sets up multi-root workspace configuration
+- Establishes cross-repository references
+
+**Repositories Created:**
+1. `edi-platform-core` - Infrastructure, shared libraries, core functions
+2. `edi-mappers` - All EDI transaction mappers
+3. `edi-connectors` - Trading partner connectors
+4. `edi-partner-configs` - Partner metadata and configurations
+5. `edi-data-platform` - ADF pipelines and SQL databases
 
 ---
 
@@ -59,16 +68,17 @@ This guide outlines all tasks needed to get the EDI Platform implementation goin
 
 ---
 
-### 1.4 Create CODEOWNERS File **[AI AUTOMATED]**
+### 1.4 Create CODEOWNERS Files **[AI AUTOMATED]**
 
 **Prompt:** [02-create-codeowners.md](02-create-codeowners.md)
 
 **What it does:**
-- Creates `.github/CODEOWNERS` file
-- Assigns ownership based on team structure
-- Maps directories to appropriate teams
+- Creates `.github/CODEOWNERS` file in each repository
+- Assigns ownership based on team structure (DevOps/Platform Engineering model)
+- Maps directories to appropriate team members
+- Ensures cross-functional review requirements
 
-**Note:** Update team names and GitHub handles after creation.
+**Note:** Update team member GitHub handles after creation. With a unified DevOps/Platform Engineering team, all engineers share ownership responsibilities.
 
 ---
 
