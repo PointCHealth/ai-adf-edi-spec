@@ -145,8 +145,9 @@ az role assignment create \
 
 # 6. Save these values for GitHub secrets:
 echo "AZURE_CLIENT_ID_$($env.ToUpper()): $app"
-echo "AZURE_TENANT_ID: $(az account show --query tenantId -o tsv)"
-echo "AZURE_SUBSCRIPTION_ID: $subscriptionId"
+echo "AZURE_TENANT_ID: 76888a14-162d-4764-8e6f-c5a34addbd87"
+echo "AZURE_SUBSCRIPTION_ID_DEV: 0f02cf19-be55-4aab-983b-951e84910121"
+echo "AZURE_SUBSCRIPTION_ID_PROD: 85aa9a59-7b1c-49d2-84ba-0640040bc097"
 ```
 
 **Prerequisites:**
@@ -203,8 +204,9 @@ az group create --name "rg-edi-prod-eastus2" --location $location --tags $tags
 | Secret Name | Value | Source |
 |------------|-------|--------|
 | `AZURE_CLIENT_ID` | From step 2.1 output | App Registration |
-| `AZURE_TENANT_ID` | From step 2.1 output | Azure AD |
-| `AZURE_SUBSCRIPTION_ID` | From step 2.1 output | Azure Subscription |
+| `AZURE_TENANT_ID` | `76888a14-162d-4764-8e6f-c5a34addbd87` | Azure AD |
+| `AZURE_SUBSCRIPTION_ID_DEV` | `0f02cf19-be55-4aab-983b-951e84910121` | EDI-DEV Subscription |
+| `AZURE_SUBSCRIPTION_ID_PROD` | `85aa9a59-7b1c-49d2-84ba-0640040bc097` | EDI-PROD Subscription |
 
 **Option B: Via GitHub CLI**
 
@@ -213,10 +215,11 @@ az group create --name "rg-edi-prod-eastus2" --location $location --tags $tags
 
 gh auth login
 
-# Add secrets (replace with your actual values)
+# Add secrets (replace client-id with your actual value from step 2.1)
 gh secret set AZURE_CLIENT_ID --body "your-client-id-from-step-2.1"
-gh secret set AZURE_TENANT_ID --body "your-tenant-id"
-gh secret set AZURE_SUBSCRIPTION_ID --body "your-subscription-id"
+gh secret set AZURE_TENANT_ID --body "76888a14-162d-4764-8e6f-c5a34addbd87"
+gh secret set AZURE_SUBSCRIPTION_ID_DEV --body "0f02cf19-be55-4aab-983b-951e84910121"
+gh secret set AZURE_SUBSCRIPTION_ID_PROD --body "85aa9a59-7b1c-49d2-84ba-0640040bc097"
 ```
 
 **Prerequisites:**

@@ -247,8 +247,9 @@ See Section 5 in the full guide for complete CODEOWNERS templates for each repos
 **Required Secrets**:
 
 - `AZURE_CLIENT_ID` - Service principal for OIDC authentication
-- `AZURE_TENANT_ID` - Azure AD tenant ID
-- `AZURE_SUBSCRIPTION_ID` - Target Azure subscription
+- `AZURE_TENANT_ID` - Azure AD tenant ID: `76888a14-162d-4764-8e6f-c5a34addbd87`
+- `AZURE_SUBSCRIPTION_ID_DEV` - Development subscription: `0f02cf19-be55-4aab-983b-951e84910121` (EDI-DEV)
+- `AZURE_SUBSCRIPTION_ID_PROD` - Production subscription: `85aa9a59-7b1c-49d2-84ba-0640040bc097` (EDI-PROD)
 - `AZURE_ARTIFACTS_PAT` - Personal access token for NuGet feed
 - `CODECOV_TOKEN` - Code coverage reporting
 - `SONAR_TOKEN` - Static analysis
@@ -257,8 +258,9 @@ See Section 5 in the full guide for complete CODEOWNERS templates for each repos
 
 ```bash
 gh secret set AZURE_CLIENT_ID --org PointCHealth --body "<value>"
-gh secret set AZURE_TENANT_ID --org PointCHealth --body "<value>"
-gh secret set AZURE_SUBSCRIPTION_ID --org PointCHealth --body "<value>"
+gh secret set AZURE_TENANT_ID --org PointCHealth --body "76888a14-162d-4764-8e6f-c5a34addbd87"
+gh secret set AZURE_SUBSCRIPTION_ID_DEV --org PointCHealth --body "0f02cf19-be55-4aab-983b-951e84910121"
+gh secret set AZURE_SUBSCRIPTION_ID_PROD --org PointCHealth --body "85aa9a59-7b1c-49d2-84ba-0640040bc097"
 gh secret set AZURE_ARTIFACTS_PAT --org PointCHealth --body "<value>"
 ```
 

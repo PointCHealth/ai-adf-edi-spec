@@ -1,5 +1,14 @@
 # Azure Resource Inventory
 
+## Azure Subscription & Tenant Information
+
+| Environment | Subscription Name | Subscription ID | Tenant ID |
+|-------------|-------------------|-----------------|------------|
+| Development | EDI-DEV | `0f02cf19-be55-4aab-983b-951e84910121` | `76888a14-162d-4764-8e6f-c5a34addbd87` |
+| Production | EDI-PROD | `85aa9a59-7b1c-49d2-84ba-0640040bc097` | `76888a14-162d-4764-8e6f-c5a34addbd87` |
+
+## Resource Naming Convention
+
 All resource names use the `{component}-edi-{env}` convention unless noted. Replace `{env}` with `dev`, `test`, `prod`, etc. SKU values reflect recommended starting tiers for the initial rollout; adjust per capacity planning.
 
 ## Storage & Data Platforms
