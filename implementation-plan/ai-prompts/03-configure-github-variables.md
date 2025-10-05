@@ -79,7 +79,7 @@ After running this prompt, you should have:
 
 2. Run the script:
    ```powershell
-   cd c:\repos\edi-platform-monorepo
+   cd c:\repos\edi-platform-core
    .\scripts\configure-github-variables.ps1
    ```
 

@@ -26,7 +26,7 @@ This guide outlines all tasks needed to get the EDI Platform implementation goin
 
 ### 1.2 Create Strategic Repositories & Initialize Structure **[AI AUTOMATED]**
 
-**Prompt:** [01-create-strategic-repos-structure.md](01-create-monorepo-structure.md)
+**Prompt:** [01-create-strategic-repositories.md](01-create-strategic-repositories.md)
 
 **What it does:**
 - Creates five strategic repositories in GitHub
@@ -122,9 +122,9 @@ echo "App ID: $app"
 # 2. Create Service Principal
 az ad sp create --id $app
 
-# 3. Get your GitHub org and repo name
+# 3. Get your GitHub org and repo names (for each of the five repositories)
 $githubOrg = "PointCHealth"
-$githubRepo = "edi-platform-monorepo"
+$githubRepo = "edi-platform-core"  # Repeat for each repo: edi-mappers, edi-connectors, edi-partner-configs, edi-data-platform
 
 # 4. Create Federated Credential
 az ad app federated-credential create --id $app --parameters "{
@@ -364,7 +364,7 @@ gh secret set AZURE_SUBSCRIPTION_ID_PROD --body "85aa9a59-7b1c-49d2-84ba-0640040
 **Actions:**
 
 ```powershell
-# From local terminal in monorepo
+# From local terminal in edi-platform-core repository
 
 # 1. Create feature branch
 git checkout -b feature/initial-infrastructure
@@ -632,7 +632,7 @@ git push origin feature/initial-infrastructure
 ## Success Criteria & Validation
 
 ### ✅ Week 1-2 Completion Checklist
-- [ ] Repository created with monorepo structure
+- [ ] Five strategic repositories created with appropriate structures
 - [ ] Branch protection rules configured
 - [ ] Azure AD apps registered for all environments
 - [ ] GitHub secrets and variables configured

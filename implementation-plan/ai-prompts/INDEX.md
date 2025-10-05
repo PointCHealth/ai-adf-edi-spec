@@ -22,7 +22,7 @@ This directory contains AI prompts that automate various aspects of the EDI Plat
 
 | # | Prompt File | Purpose | Type |
 |---|------------|---------|------|
-| 01 | [01-create-monorepo-structure.md](01-create-monorepo-structure.md) | Create five strategic repositories and directory structures | 🤖 Automated |
+| 01 | [01-create-strategic-repositories.md](01-create-strategic-repositories.md) | Create five strategic repositories and directory structures | 🤖 Automated |
 | 02 | [02-create-codeowners.md](02-create-codeowners.md) | Generate CODEOWNERS files for automatic reviewer assignment | 🤖 Automated |
 | 03 | [03-configure-github-variables.md](03-configure-github-variables.md) | Script to set GitHub repository variables | 🤖 Automated |
 
@@ -94,7 +94,7 @@ Track your AI code acceptance rate (target: >70%):
 
 | Prompt | AI Generated LOC | Accepted | Modified | Rejected | Rate |
 |--------|------------------|----------|----------|----------|------|
-| 01-monorepo | - | - | - | - | - |
+| 01-strategic-repos | - | - | - | - | - |
 | 02-codeowners | - | - | - | - | - |
 | 04-infra-workflows | - | - | - | - | - |
 | ... | ... | ... | ... | ... | ... |

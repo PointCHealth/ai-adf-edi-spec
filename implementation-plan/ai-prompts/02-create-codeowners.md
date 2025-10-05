@@ -1,25 +1,30 @@
-# AI Prompt: Create CODEOWNERS File
+# AI Prompt: Create CODEOWNERS Files for All Repositories
 
 ## Objective
-Create a GitHub CODEOWNERS file to automatically assign reviewers based on the files being changed.
+Create GitHub CODEOWNERS files for each of the five strategic repositories to automatically assign reviewers based on the files being changed.
 
 ## Prerequisites
-- Monorepo structure created
+- Strategic repositories created (edi-platform-core, edi-mappers, edi-connectors, edi-partner-configs, edi-data-platform)
 - Team structure and GitHub handles identified
 - Repository permissions configured
 
 ## Prompt
 
 ```
-I need you to create a comprehensive CODEOWNERS file for the EDI Healthcare Platform monorepo.
+I need you to create CODEOWNERS files for each of the five strategic repositories in the EDI Healthcare Platform.
 
 Context:
+- Architecture: Five separate repositories (edi-platform-core, edi-mappers, edi-connectors, edi-partner-configs, edi-data-platform)
 - Project: Healthcare EDI platform with infrastructure, Azure Functions, and partner configurations
 - Teams: Platform Engineering, Data Engineering, Security, DevOps
 - Security-sensitive areas require security team review
 - Infrastructure changes require platform team review
 
-Please create a .github/CODEOWNERS file with the following ownership rules:
+For EACH repository, create a .github/CODEOWNERS file appropriate to that repository's content:
+
+## edi-platform-core CODEOWNERS
+
+Create .github/CODEOWNERS with these ownership rules:
 
 1. Default ownership:
    - All files: @vincemic (platform lead)
@@ -56,6 +61,46 @@ Please create a .github/CODEOWNERS file with the following ownership rules:
 8. Test code:
    - /tests/ → @data-engineering-team @devops-team
 
+## edi-mappers CODEOWNERS
+
+Create .github/CODEOWNERS for mapper functions:
+
+1. Default ownership: @data-engineering-team @vincemic
+2. Mapper functions: /functions/ → @data-engineering-team
+3. Shared mapper code: /shared/ → @data-engineering-team
+4. Test data: /tests/TestData/ → @data-engineering-team @security-team
+5. CI/CD: /.github/workflows/ → @devops-team @data-engineering-team
+
+## edi-connectors CODEOWNERS
+
+Create .github/CODEOWNERS for connector functions:
+
+1. Default ownership: @data-engineering-team @vincemic
+2. Connector functions: /functions/ → @data-engineering-team
+3. Connection logic: /shared/ → @data-engineering-team @security-team
+4. CI/CD: /.github/workflows/ → @devops-team @data-engineering-team
+
+## edi-partner-configs CODEOWNERS
+
+Create .github/CODEOWNERS for partner configurations:
+
+1. Default ownership: @security-team @vincemic
+2. Partner configurations: /partners/ → @security-team @data-engineering-team
+3. Configuration schemas: /schemas/ → @data-engineering-team @security-team
+4. Routing rules: /routing/ → @data-engineering-team
+5. Validation workflows: /.github/workflows/ → @devops-team @security-team
+
+## edi-data-platform CODEOWNERS
+
+Create .github/CODEOWNERS for ADF and SQL:
+
+1. Default ownership: @data-engineering-team @vincemic
+2. ADF pipelines: /adf/ → @data-engineering-team
+3. SQL schemas: /sql/ → @data-engineering-team @vincemic
+4. CI/CD: /.github/workflows/ → @devops-team @data-engineering-team
+
+## Common Requirements for ALL CODEOWNERS Files
+
 Requirements:
 - Use proper CODEOWNERS syntax
 - Add comments explaining each section
@@ -72,7 +117,8 @@ Also provide:
 ## Expected Outcome
 
 After running this prompt, you should have:
-- ✅ `.github/CODEOWNERS` file created
+- ✅ `.github/CODEOWNERS` files created in ALL FIVE repositories
+- ✅ Repository-specific ownership rules appropriate to each codebase
 - ✅ All critical paths have designated owners
 - ✅ Security-sensitive areas protected
 - ✅ Clear documentation in file comments
