@@ -355,5 +355,5 @@ This is an internal specification and implementation repository. When making cha
 
 ---
 
-**Last Updated:** October 2, 2025  
-**Repository Maintainer:** Healthcare Platform Engineering Team
+**Last Updated:** October 5, 2025  
+**Repository Maintainer:** EDI Platform Team (DevOps/Platform Engineering)

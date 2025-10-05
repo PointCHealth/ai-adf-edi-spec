@@ -790,7 +790,7 @@ resource blobDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previ
 
 | Metric | Threshold | Alert Action |
 |--------|-----------|--------------|
-| Blob Upload Failures | >1% of uploads | Page on-call engineer |
+| Blob Upload Failures | >1% of uploads | Page EDI Platform on-call engineer |
 | Rehydration Time | >24 hours | Investigate storage account |
 | Storage Tier Distribution | >10% in Hot after 90 days | Review lifecycle policy |
 | Missing Blob References | Any batches without BlobUri | Data integrity investigation |
@@ -949,6 +949,6 @@ See `docs/operations/blob-storage-migration-runbook.md` for step-by-step migrati
 
 ---
 
-**Document Owner:** Data Engineering Team  
-**Reviewers:** Architecture Review Board, Security Team, Operations Team  
+**Document Owner:** EDI Platform Team  
+**Reviewers:** Architecture Review Board, Security Team, Compliance Team  
 **Next Review Date:** January 2, 2026

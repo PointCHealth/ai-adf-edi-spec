@@ -1,9 +1,9 @@
 # Repository Setup Guide - Strategic Multi-Repository Structure
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Last Updated:** October 5, 2025  
 **Status:** Active Implementation Guide  
-**Owner:** DevOps and Platform Architecture Team
+**Owner:** EDI Platform Team (DevOps/Platform Engineering)
 
 ---
 
@@ -88,20 +88,18 @@ Create teams for clear ownership and access control:
 
 | Team Name | Purpose | Members | Default Permission |
 |-----------|---------|---------|-------------------|
-| `edi-platform-admins` | Repository administration | Platform Architect, DevOps Lead | Admin |
-| `edi-platform-core-team` | Core infrastructure development | Platform Engineers | Write |
-| `edi-integration-team` | Mapper and connector development | Integration Engineers | Write |
-| `edi-operations-team` | Monitoring, troubleshooting | Operations Engineers | Read |
+| `edi-platform-admins` | Repository administration | EDI Platform Lead | Admin |
+| `edi-platform-team` | Full-stack platform engineering (all repos) | All EDI Platform Engineers | Write |
 | `edi-readonly` | Stakeholders, auditors | Various stakeholders | Read |
+
+**Note**: With a single EDI team operating in a DevOps/Platform Engineering model, all engineers have write access to all repositories. This promotes shared ownership, cross-training, and collaboration.
 
 **Team Creation Script**:
 
 ```bash
 # Create teams via GitHub CLI
 gh api orgs/PointCHealth/teams -f name="edi-platform-admins" -f privacy="closed"
-gh api orgs/PointCHealth/teams -f name="edi-platform-core-team" -f privacy="closed"
-gh api orgs/PointCHealth/teams -f name="edi-integration-team" -f privacy="closed"
-gh api orgs/PointCHealth/teams -f name="edi-operations-team" -f privacy="closed"
+gh api orgs/PointCHealth/teams -f name="edi-platform-team" -f privacy="closed"
 gh api orgs/PointCHealth/teams -f name="edi-readonly" -f privacy="closed"
 ```
 
@@ -228,11 +226,13 @@ See Section 4 in the full implementation guide for detailed branch protection co
 
 | Repository | Primary Owners | Secondary Owners |
 |------------|----------------|------------------|
-| `edi-platform-core` | Platform Architect, Core Team | - |
-| `edi-mappers` | Integration Team | Healthcare SME |
-| `edi-connectors` | Integration Team | Database Engineer |
-| `edi-partner-configs` | Integration Team, Healthcare SME | - |
-| `edi-data-platform` | Core Team, Database Engineer | - |
+| `edi-platform-core` | EDI Platform Team | EDI Platform Lead |
+| `edi-mappers` | EDI Platform Team | Healthcare SME |
+| `edi-connectors` | EDI Platform Team | EDI Platform Lead |
+| `edi-partner-configs` | EDI Platform Team | Healthcare SME |
+| `edi-data-platform` | EDI Platform Team | EDI Platform Lead |
+
+**Note**: With a unified DevOps/Platform Engineering team, all engineers share ownership responsibilities. CODEOWNERS ensures at least two team members review changes for quality and knowledge sharing.
 
 ### 5.2 Sample CODEOWNERS Files
 

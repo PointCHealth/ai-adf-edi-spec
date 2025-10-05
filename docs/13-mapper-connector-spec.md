@@ -615,7 +615,7 @@ config/connectors/
   },
   "monitoring": {
     "alertOnConsecutiveFailures": 3,
-    "alertRecipients": ["ops-team@example.com"]
+    "alertRecipients": ["edi-platform-team@pointchealth.com"]
   }
 }
 ```
@@ -751,19 +751,19 @@ CREATE INDEX IX_Correlation_ClaimSystem ON CorrelationMapping(ClaimSystemID, Sta
 
 ### 7.1 Onboarding Checklist
 
-| Step | Task | Responsible Team | Artifacts Produced |
+| Step | Task | Responsible | Artifacts Produced |
 |------|------|------------------|-------------------|
-| 1 | Discovery: Identify claim system type, connectivity, data formats | Integration Team | Integration questionnaire |
-| 2 | Design mapping rules (X12 → claim system format) | Integration Team + Claim System SME | Mapping rule JSON files |
-| 3 | Design reverse mapping rules (claim system → canonical) | Integration Team + Claim System SME | Reverse mapping JSON files |
-| 4 | **Implement Azure Function Mapper** (outbound + inbound, C#) | Development Team | Azure Function code, unit tests, mapping rule loader |
-| 5 | **Implement Azure Function Connector** (delivery + retrieval, C#) | Development Team | Azure Function code, integration tests, resilience patterns |
-| 6 | Configure Service Bus subscription filter | Platform Team | Subscription rule (IaC) |
-| 7 | Store mapping rules in Blob Storage + connector config/credentials in Key Vault | Operations Team | Mapping rules repository, Key Vault secrets |
-| 8 | Deploy mapper + connector Functions to dev environment | DevOps Team | Bicep deployment, Function App configuration |
-| 9 | End-to-end testing with claim system (test data) | Integration Team + Claim System SME | Test results, validation report |
-| 10 | Deploy to prod, enable monitoring alerts | DevOps + Platform Team | Production deployment, alert rules |
-| 11 | Document runbook (troubleshooting, manual retry) | Operations Team | Runbook in `docs/runbooks/` |
+| 1 | Discovery: Identify claim system type, connectivity, data formats | EDI Platform Engineer | Integration questionnaire |
+| 2 | Design mapping rules (X12 → claim system format) | EDI Platform Engineer + Claim System SME | Mapping rule JSON files |
+| 3 | Design reverse mapping rules (claim system → canonical) | EDI Platform Engineer + Claim System SME | Reverse mapping JSON files |
+| 4 | **Implement Azure Function Mapper** (outbound + inbound, C#) | EDI Platform Engineer | Azure Function code, unit tests, mapping rule loader |
+| 5 | **Implement Azure Function Connector** (delivery + retrieval, C#) | EDI Platform Engineer | Azure Function code, integration tests, resilience patterns |
+| 6 | Configure Service Bus subscription filter | EDI Platform Engineer | Subscription rule (IaC) |
+| 7 | Store mapping rules in Blob Storage + connector config/credentials in Key Vault | EDI Platform Engineer | Mapping rules repository, Key Vault secrets |
+| 8 | Deploy mapper + connector Functions to dev environment | EDI Platform Engineer | Bicep deployment, Function App configuration |
+| 9 | End-to-end testing with claim system (test data) | EDI Platform Engineer + Claim System SME | Test results, validation report |
+| 10 | Deploy to prod, enable monitoring alerts | EDI Platform Team | Production deployment, alert rules |
+| 11 | Document runbook (troubleshooting, manual retry) | EDI Platform Engineer | Runbook in `docs/runbooks/` |
 
 ### 7.2 Integration Questionnaire (Template)
 
@@ -967,7 +967,7 @@ Sections:
 - If X12 parsing error: Validate raw EDI file structure, check for non-standard segments
 - If transient error: Resubmit routing message from DLQ (use Service Bus Explorer)
 
-**Escalation**: If mapping rule fix required, contact Integration Team
+**Escalation**: If mapping rule fix required, contact EDI Platform Team
 
 ### 11.2 Runbook: Connector Delivery Failure
 
@@ -1368,4 +1368,4 @@ public class SftpConnector
 **Last Updated**: October 2, 2025  
 **Status**: Draft - Pending Review  
 **Next Review**: Q1 2026  
-**Owner**: Integration Architecture Team
+**Owner**: EDI Platform Team

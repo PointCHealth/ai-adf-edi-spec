@@ -388,29 +388,40 @@ Weeks 17-18: Production Hardening (Agent-driven security audit with automated ev
 
 ## 7. Team Structure
 
-### 7.1 Core Team Roles (AI-Driven)
+### 7.1 EDI Team (DevOps/Platform Engineering Model)
+
+The solution is managed by a **single, cross-functional EDI team** operating in a **DevOps/Platform Engineering capacity**. Team members are full-stack platform engineers with overlapping skills across infrastructure, application development, operations, and partner integrations.
 
 | Role | Responsibilities | Headcount | Key Skills | % Time on AI Oversight |
 |------|------------------|-----------|------------|------------------------|
-| **Platform Architect** | Architecture decisions, prompt engineering, AI output validation | 1 | Azure PaaS, EDI standards, prompt engineering | 60% |
-| **Platform Engineer** | AI prompt creation, IaC review, critical path development | 1 (was 2) | C#, Bicep, prompt engineering | 70% |
-| **Integration Engineer** | AI-generated mapper validation, partner coordination | 1 (was 3) | C#, X12 parsing, domain expertise | 50% |
-| **Database Engineer** | Schema design review, AI-generated SQL validation | 0.5 (was 1) | SQL Server, Azure SQL, event sourcing | 40% |
-| **DevOps Engineer** | AI agent orchestration, pipeline monitoring | 1 | GitHub Actions, AI workflow automation | 50% |
-| **QA Engineer** | Test strategy, AI-generated test validation | 1 (was 2) | C#, xUnit, edge case identification | 60% |
-| **AI Agent Coordinator** (new) | Multi-agent orchestration, prompt optimization, quality gates | 1 | Prompt engineering, AI tools, code review | 90% |
-| **Healthcare SME** | EDI validation, AI hallucination detection, compliance | 0.5 (was 0.2) | X12 standards, HIPAA, healthcare workflows | 80% |
+| **EDI Platform Lead** | Architecture decisions, prompt engineering, AI output validation, team coordination | 1 | Azure PaaS, EDI standards, prompt engineering, leadership | 60% |
+| **EDI Platform Engineer** (Senior) | IaC development, Azure Function development, AI prompt creation, infrastructure operations, partner onboarding | 2 | C#, Bicep, X12 parsing, Azure DevOps, prompt engineering | 65% |
+| **EDI Platform Engineer** | Full-stack development (mappers, connectors, pipelines), testing, deployment automation, monitoring | 2 | C#, SQL, ADF, GitHub Actions, observability tools | 55% |
+| **AI Agent Coordinator** | Multi-agent orchestration, prompt optimization, quality gates, AI-generated code validation | 1 | Prompt engineering, AI tools, code review, testing frameworks | 90% |
+| **Healthcare EDI SME** | EDI standards validation, partner coordination, compliance review, AI hallucination detection | 0.5 | X12 standards, HIPAA, healthcare workflows | 80% |
 
-**Total**: 6 FTE (was 12 FTE) - **50% reduction**
+**Total**: 6.5 FTE - **DevOps/Platform Engineering Model**
 
-**Note**: Security and operations functions absorbed into existing roles with AI assistance
+**Team Philosophy**:
 
-### 7.2 Extended Team (Part-Time)
+- **Full Ownership**: Team owns the entire stack (infrastructure, applications, data, operations, security)
+- **DevOps Culture**: Build it, deploy it, run it, monitor it, improve it
+- **Platform Engineering**: Create self-service capabilities, automation, and golden paths
+- **Cross-Training**: All engineers develop T-shaped skills across multiple domains
+- **AI-Augmented**: Leverage AI agents for code generation, testing, documentation, and operations
 
-- **Healthcare SME**: EDI transaction requirements, partner coordination (20%)
+**Skill Distribution**:
+
+- All team members have baseline skills in: C#, Bicep, Azure PaaS, Git, CI/CD
+- Senior engineers mentor others in: X12 parsing, partner integration patterns, advanced Azure services
+- Platform Lead provides: Architecture guidance, escalation support, stakeholder communication
+- AI Coordinator specializes in: Prompt engineering, agent orchestration, quality validation
+
+### 7.2 Extended Team (Part-Time Support)
+
 - **Finance Analyst**: Cost tracking, budget adherence (10%)
-- **Compliance Officer**: HIPAA audit support (10%)
-- **Technical Writer**: Documentation, runbook authoring (25%)
+- **Compliance Officer**: HIPAA audit support, security reviews (10%)
+- **Technical Writer**: Documentation polish, runbook formatting (15%)
 
 ### 7.3 Governance
 
@@ -418,16 +429,17 @@ Weeks 17-18: Production Hardening (Agent-driven security audit with automated ev
 
 - VP Engineering
 - Director Healthcare IT
-- Principal Architect
+- EDI Platform Lead
 - Finance Lead
 
-**Working Group** (Weekly):
+**Team Rituals**:
 
-- Platform Architect (Lead)
-- Team Leads from each discipline
-- Product Owner
+- **Daily Standup**: 15 minutes - coordination, blockers, priorities
+- **Weekly Planning**: Sprint planning, backlog refinement, AI agent task assignment
+- **Bi-weekly Retrospective**: Process improvements, lessons learned, team health
+- **Monthly Architecture Review**: Design decisions, technical debt, strategic alignment
 
-**Daily Standups**: 15 minutes, team-specific
+**No Separate Team Silos**: All work is collaborative with shared ownership across the team
 
 ---
 

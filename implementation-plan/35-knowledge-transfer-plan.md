@@ -1,24 +1,26 @@
 # Knowledge Transfer Plan
 
-**Document Version:** 0.2  
-**Last Updated:** October 4, 2025  
+**Document Version:** 0.3  
+**Last Updated:** October 5, 2025  
 **Status:** Agent-Orchestrated Outline  
-**Owner:** GitHub Agent Collective
+**Owner:** EDI Platform Team (DevOps/Platform Engineering Model)
 
 ---
 
 ## Purpose
 
-Establish the onboarding and handoff activities that transition knowledge to long-term owners.
+Establish the onboarding and continuous learning activities that enable the EDI Platform Team to maintain and evolve the solution. In the DevOps/Platform Engineering model, all engineers develop T-shaped skills across infrastructure, applications, operations, and partner integrations.
 
 ## Key Topics
 
-- Training materials development
-- Operations handoff procedures
-- Developer onboarding guide
+- Onboarding guide for new EDI Platform Engineers
+- Cross-training program for T-shaped skill development
+- Core competencies: Infrastructure (Bicep), Applications (C#, Functions), Operations (Monitoring, Troubleshooting), EDI (X12 standards, healthcare workflows)
 - Architecture decision records (ADR)
-- Wiki and documentation structure
-- Video tutorials and walkthroughs
+- Runbook library and incident response training
+- AI agent collaboration and prompt engineering skills
+- Partner onboarding procedures
+- Continuous learning and knowledge sharing practices
 
 ## Deliverables
 

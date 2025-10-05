@@ -1,15 +1,15 @@
 # Development Environment Setup
 
-**Document Version:** 0.2  
-**Last Updated:** October 4, 2025  
+**Document Version:** 0.3  
+**Last Updated:** October 5, 2025  
 **Status:** Agent-Orchestrated Outline  
-**Owner:** GitHub Agent Collective
+**Owner:** EDI Platform Team (DevOps/Platform Engineering Model)
 
 ---
 
 ## Purpose
 
-Document the tooling stack and local environment steps that developers and AI agents follow to contribute safely and consistently.
+Document the tooling stack and local environment steps that all EDI Platform Engineers follow to contribute safely and consistently. This setup supports the DevOps/Platform Engineering model where all team members work across the full stack (infrastructure, applications, data, operations).
 
 ## Key Topics
 

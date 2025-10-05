@@ -1,15 +1,15 @@
 # CI/CD Pipeline Implementation
 
-**Document Version:** 0.2  
-**Last Updated:** October 4, 2025  
+**Document Version:** 0.3  
+**Last Updated:** October 5, 2025  
 **Status:** Agent-Orchestrated Outline  
-**Owner:** GitHub Agent Collective
+**Owner:** EDI Platform Team (DevOps/Platform Engineering Model)
 
 ---
 
 ## Purpose
 
-Describe the standardized GitHub Actions pipelines that build, test, and promote all components.
+Describe the standardized GitHub Actions pipelines that the EDI Platform Team uses to build, test, and promote all components. In the DevOps/Platform Engineering model, the team owns the entire CI/CD lifecycle.
 
 ## Key Topics
 

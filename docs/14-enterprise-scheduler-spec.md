@@ -80,7 +80,7 @@ Goals:
    - Alerts when job start delay > SLA or failure count > threshold.
 7. **Security & Compliance**
    - Managed Identity for scheduler pipeline with least privilege (read `config/schedules`, send to Service Bus, start dependent pipelines).
-   - Changes to schedules require PR review (Code Owners: platform team + business owner).
+   - Changes to schedules require PR review (Code Owners: EDI Platform Team + business owner).
 8. **Failover & Retry**
    - Automatic retry policy (default 3 attempts with exponential backoff 5/15/30 minutes).
    - Dead-letter queue `scheduler-dlq` for manual intervention.
@@ -112,7 +112,7 @@ Goals:
 | **Scheduler Function (`fn_scheduler_router`)** | Azure Function with Service Bus trigger; resolves target pipeline/function, applies parameter templates, starts execution. |
 | **Execution Targets** | ADF pipelines (e.g., `pl_generate_834_snapshot`), Durable Functions (outbound aggregator), Data Lake scripts. |
 | **State Store** | Azure Table Storage / Cosmos DB container `SchedulerState` storing last run timestamp, retries, overrides. |
-| **Monitoring & Alerts** | Log Analytics queries + Azure Monitor alert rules; integrates with `#edi-operations` Teams channel. |
+| **Monitoring & Alerts** | Log Analytics queries + Azure Monitor alert rules; integrates with `#edi-platform` Teams channel. |
 
 ### 7.2 Sequence Flow (Happy Path)
 
@@ -192,7 +192,7 @@ Key validation rules:
 
 | Responsibility | Task | Frequency |
 |----------------|------|-----------|
-| Platform Team | Review upcoming calendar changes (holidays) and update `calendars` config. | Quarterly |
+| EDI Platform Team | Review upcoming calendar changes (holidays) and update `calendars` config. | Quarterly |
 | Operations | Monitor `SchedulerRun_CL` workbook for failures/slips; respond to alerts. | Daily |
 | Security | Review access logs to `RunNow` endpoint. | Monthly |
 | Compliance | Audit schedule change history via Git commits and Log Analytics. | Semi-annual |

@@ -1,15 +1,15 @@
 # Deployment Strategy
 
-**Document Version:** 0.2  
-**Last Updated:** October 4, 2025  
+**Document Version:** 0.3  
+**Last Updated:** October 5, 2025  
 **Status:** Agent-Orchestrated Outline  
-**Owner:** GitHub Agent Collective
+**Owner:** EDI Platform Team (DevOps/Platform Engineering Model)
 
 ---
 
 ## Purpose
 
-Define environment promotion flows, automated policy gates, and production safeguards for releases.
+Define environment promotion flows, automated policy gates, and production safeguards for releases. The EDI Platform Team owns all deployment activities end-to-end in the DevOps/Platform Engineering model.
 
 ## Key Topics
 
