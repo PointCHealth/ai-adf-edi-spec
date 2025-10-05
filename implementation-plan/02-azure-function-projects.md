@@ -26,17 +26,18 @@
 
 ### 1.1 Function Portfolio
 
-| Project | Repository | Technology | Hosting Plan | Primary Trigger |
-|---------|-----------|------------|--------------|-----------------|
-| **Router Function** | `edi-function-router` | C# .NET 8 isolated worker | Premium EP1 | HTTP (from ADF) |
-| **Eligibility Mapper** | `edi-function-mapper-eligibility` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
-| **Claims Mapper** | `edi-function-mapper-claims` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
-| **Enrollment Mapper** | `edi-function-mapper-enrollment` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
-| **Remittance Mapper** | `edi-function-mapper-remittance` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
-| **SFTP Connector** | `edi-function-connector-sftp` | C# .NET 8 isolated worker | Premium EP1 | Timer + Blob |
-| **API Connector** | `edi-function-connector-api` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
-| **Database Connector** | `edi-function-connector-db` | C# .NET 8 isolated worker | Premium EP1 | Timer + Service Bus |
-| **Scheduler** | `edi-function-scheduler` | C# .NET 8 isolated worker | Premium EP1 | Timer |
+**Note**: Repository assignments reflect the strategic multi-repo structure used from project inception.
+
+| Project | Strategic Repository | Technology | Hosting Plan | Primary Trigger |
+| **Router Function** | `edi-platform-core` | C# .NET 8 isolated worker | Premium EP1 | HTTP (from ADF) |
+| **Eligibility Mapper** | `edi-mappers` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
+| **Claims Mapper** | `edi-mappers` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
+| **Enrollment Mapper** | `edi-mappers` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
+| **Remittance Mapper** | `edi-mappers` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
+| **SFTP Connector** | `edi-connectors` | C# .NET 8 isolated worker | Premium EP1 | Timer + Blob |
+| **API Connector** | `edi-connectors` | C# .NET 8 isolated worker | Premium EP1 | Service Bus Topic |
+| **Database Connector** | `edi-connectors` | C# .NET 8 isolated worker | Premium EP1 | Timer + Service Bus |
+| **Scheduler** | `edi-platform-core` | C# .NET 8 isolated worker | Premium EP1 | Timer |
 
 **Total Function Apps**: 9 (can be consolidated into fewer apps with multiple functions if preferred).
 
@@ -63,20 +64,53 @@
 
 ### 2.1 Repository Layout
 
+**Strategic Repository Structure (Phase 3+)**:
+
+**edi-platform-core/functions/router/**:
 ```text
-root/
+router/
  src/
-    Functions/                # HTTP, Service Bus, or Timer triggers
-    Services/                 # Core orchestration and domain services
-    Models/                   # DTOs, configuration objects, result types
-    Infrastructure/           # Storage, Service Bus, and Key Vault clients
+    Functions/                # HTTP triggers
+    Services/                 # Routing orchestration
+    Models/                   # Routing DTOs
+    Infrastructure/           # Storage, Service Bus clients
  tests/
-    Unit/                     # xUnit unit tests
-    Integration/              # Testcontainers-based integration tests
+    Unit/
+    Integration/
  host.json
  local.settings.json.example
  README.md
- Directory.Build.props         # Analyzer and code style configuration
+```
+
+**edi-mappers/eligibility/** (similar for claims, enrollment, remittance):
+```text
+eligibility/
+ src/
+    Functions/                # Service Bus triggers
+    Services/                 # Mapping orchestration
+    Models/                   # Mapper DTOs
+    Segments/                 # X12 segment builders
+ tests/
+    Unit/
+    Integration/
+ host.json
+ local.settings.json.example
+ README.md
+```
+
+**edi-connectors/sftp/** (similar for api, database):
+```text
+sftp/
+ src/
+    Functions/                # Timer/Blob triggers
+    Services/                 # SFTP client services
+    Models/                   # Connector DTOs
+ tests/
+    Unit/
+    Integration/
+ host.json
+ local.settings.json.example
+ README.md
 ```
 
 ### 2.2 Local Development Requirements
@@ -89,7 +123,8 @@ root/
 
 - Store environment-specific configuration in `appsettings.{Environment}.json` and publish via deployment pipelines.
 - Maintain binding configuration in `host.json` (logging sampling, extension bundles, retry policies).
-- Reference routing and partner metadata from `config/partners` and `config/routing` repositories rather than embedding duplicates.
+- Reference routing and partner metadata from `edi-partner-configs` repository rather than embedding duplicates.
+- Consume shared libraries via NuGet packages from Azure Artifacts (published from `edi-platform-core`).
 
 ---
 
@@ -185,24 +220,44 @@ root/
 
 ## 7. Shared Libraries
 
+**Repository**: `edi-platform-core/shared/`  
+**Distribution**: Azure Artifacts (NuGet private feed)
+
 ### 7.1 Package Inventory
 
 - `HealthcareEDI.Common`: base abstractions, dependency injection helpers, resilience policies.
 - `HealthcareEDI.X12Parser`: EDI parsing utilities, segment builders, schema validators.
 - `HealthcareEDI.Logging`: Serilog enrichers, correlation pipeline, Application Insights exporters.
 - `HealthcareEDI.Configuration`: strongly typed configuration accessors and caching.
+- `HealthcareEDI.ServiceBus`: Service Bus client wrappers and retry policies.
+- `HealthcareEDI.MappingEngine`: Mapping rule evaluation engine.
 
 ### 7.2 Governance
 
+- Developed and maintained in `edi-platform-core` repository.
 - Follow semantic versioning with release notes stored in repository `CHANGELOG.md`.
 - Require unit and contract tests before publishing packages to Azure Artifacts.
 - Run static analysis (Roslyn analyzers, Sonar) and vulnerability scanning in CI.
+- Published automatically on merge to main via GitHub Actions.
 
 ### 7.3 Consumption Guidelines
 
-- Centralize package version management in `Directory.Packages.props` to avoid drift.
+- Centralize package version management in `Directory.Packages.props` in each consuming repository.
+- Reference packages from Azure Artifacts feed: `https://pkgs.dev.azure.com/PointCHealth/_packaging/edi-packages/nuget/v3/index.json`.
 - Only expose public APIs that are stable; mark experimental types as internal.
 - Document breaking changes and provide migration steps two sprints in advance.
+- Consuming repositories (`edi-mappers`, `edi-connectors`) automatically notified of new versions via repository dispatch events.
+
+### 7.4 Cross-Repo Updates
+
+When a breaking change is introduced in shared libraries:
+
+1. Publish preview version (e.g., `2.0.0-preview.1`) to Azure Artifacts.
+2. Create coordinated PRs in consuming repositories (`edi-mappers`, `edi-connectors`).
+3. Update and test all consuming functions with preview version.
+4. Merge core library PR → publishes stable version (e.g., `2.0.0`).
+5. Merge consuming repository PRs → deploy updated functions.
+6. See `03a-repository-migration-strategy.md` Appendix C for detailed workflow.
 
 ---
 
@@ -230,24 +285,84 @@ root/
 
 ## 9. CI and CD Pipeline
 
-### 9.1 Pipeline Stages
+### 9.1 Pipeline Organization (Strategic Repositories)
+
+**Per-Repository Pipelines**:
+
+| Repository | Pipeline File | Triggers | Deployment Targets |
+|------------|--------------|----------|--------------------|
+| `edi-platform-core` | `.github/workflows/deploy-core-functions.yml` | Push to `main`, path: `functions/**` | Router, Scheduler |
+| `edi-mappers` | `.github/workflows/deploy-mappers.yml` | Push to `main`, path-specific | Eligibility, Claims, Enrollment, Remittance |
+| `edi-connectors` | `.github/workflows/deploy-connectors.yml` | Push to `main`, path-specific | SFTP, API, Database |
+
+**Shared Library Pipeline** (`edi-platform-core`):
+- `.github/workflows/publish-nuget.yml`
+- Triggers: Push to `main`, path: `shared/**`
+- Publishes NuGet packages to Azure Artifacts
+- Triggers repository dispatch events to consuming repos
+
+### 9.2 Pipeline Stages (Per Function)
 
 1. **Build and Test**: `dotnet restore`, `dotnet build`, `dotnet test` with coverage.
 2. **Static Analysis**: run analyzers, dependency vulnerability scan, and linting.
-3. **Package and Publish**: create deployment package artifacts and NuGet packages if needed.
-4. **Deploy**: use `az functionapp deployment source config-zip` or Bicep-driven slot swaps per environment.
+3. **Package**: create deployment package artifacts (zip for Azure Functions).
+4. **Deploy Dev**: use `az functionapp deployment source config-zip` to dev environment.
+5. **Integration Tests**: run end-to-end tests in dev environment.
+6. **Deploy Test**: promote to test environment with manual approval.
+7. **Deploy Prod**: promote to prod environment with change ticket validation.
 
-### 9.2 Secrets and Access
+### 9.3 Path-Based Triggers (Mappers and Connectors)
 
-- Leverage GitHub OIDC federation with Azure for secretless authentication.
+**Example** (`edi-mappers/.github/workflows/deploy-mappers.yml`):
+```yaml
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'eligibility/**'
+      - 'claims/**'
+      - 'enrollment/**'
+      - 'remittance/**'
+
+jobs:
+  deploy-eligibility:
+    if: contains(github.event.head_commit.modified, 'eligibility/')
+    runs-on: ubuntu-latest
+    steps:
+      # Build and deploy eligibility mapper only
+  
+  deploy-claims:
+    if: contains(github.event.head_commit.modified, 'claims/')
+    runs-on: ubuntu-latest
+    steps:
+      # Build and deploy claims mapper only
+  # ... similar for other mappers
+```
+
+### 9.4 Cross-Repo Coordination
+
+**Scenario**: Shared library update triggers redeployment of dependent functions.
+
+**Workflow**:
+1. Merge PR in `edi-platform-core/shared/` → publishes NuGet package.
+2. GitHub Action triggers repository dispatch event to `edi-mappers` and `edi-connectors`.
+3. Consuming repositories receive event, update package references, rebuild, and redeploy.
+
+**Implementation** (see `03a-repository-migration-strategy.md` Section 6.3).
+
+### 9.5 Secrets and Access
+
+- Leverage GitHub OIDC federation with Azure for secretless authentication (per repository).
 - Store environment configuration in Azure App Configuration or Key Vault references at deployment time.
 - Rotate credentials on a 90-day cadence; enforce alerting when rotation windows are missed.
+- Each repository has separate Azure service principal with least-privilege RBAC.
 
-### 9.3 Compliance Gates
+### 9.6 Compliance Gates
 
 - Integrate policy checks (PSRule, Checkov) before production promotion.
 - Require change ticket linkage and approver sign-off for production deployments.
 - Capture deployment metadata (build number, commit SHA, initiator) for audit trail.
+- Cross-repo dependency validation: ensure compatible shared library versions before prod deployment.
 
 ---
 
