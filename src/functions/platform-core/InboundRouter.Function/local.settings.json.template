@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=00000000-0000-0000-0000-000000000000",
+    
+    "StorageAccountConnectionString": "UseDevelopmentStorage=true",
+    "ServiceBusConnectionString": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=PLACEHOLDER",
+    "KeyVaultEndpoint": "https://kv-edi-dev-eus2.vault.azure.net/",
+    
+    "RoutingOptions__RoutingTopicName": "transaction-routing",
+    "RoutingOptions__MaxRetryAttempts": "3"
+  }
+}
