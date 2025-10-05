@@ -384,7 +384,48 @@ jobs:
 
 ## 12. Security Integration in CI/CD
 
-- Dependency scanning (Dependabot / Renovate) scheduled weekly.
+### 12.1 Dependency Management (Dependabot)
+
+**Automated dependency updates configured per repository with risk-based schedules:**
+
+| Repository | NuGet Updates | GitHub Actions | npm | Open PR Limit | Priority |
+|------------|---------------|----------------|-----|---------------|----------|
+| **edi-platform-core** | Daily (2 AM ET) | Weekly (Mon 3 AM) | Weekly (Tue 2 AM) | 10 | HIGH |
+| **edi-mappers** | Weekly (Wed 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+| **edi-connectors** | Weekly (Thu 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+| **edi-partner-configs** | N/A | Monthly | Monthly | 3 | LOW |
+| **edi-data-platform** | Weekly (Fri 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+
+**Update Strategy:**
+- **Daily** for edi-platform-core: Rapid security patching (HIPAA compliance)
+- **Weekly** for application repos: Balanced between security and team capacity
+- **Monthly** for config repo: Minimal dependencies, low change frequency
+- **Staggered schedules**: Distributes PR workload across the week
+
+**Package Grouping:**
+- `azure-sdk`: All Azure.* and Microsoft.Azure.* packages (batch updates)
+- `azure-functions`: Microsoft.Azure.Functions.* and Microsoft.Azure.WebJobs.*
+- `microsoft-extensions`: All Microsoft.Extensions.* packages (DI, Logging, Config)
+- `testing`: xunit, Moq, FluentAssertions, coverlet (test dependencies)
+- `microsoft-data`: Microsoft.Data.* and Microsoft.SqlServer.* (data-platform only)
+
+**Auto-Merge Policy:**
+- **Low-risk** (automatically approved and merged):
+  - All patch version updates (e.g., 1.2.3 → 1.2.4)
+  - Minor version updates for test dependencies
+  - Minor version updates for GitHub Actions
+- **High-risk** (manual review required):
+  - Major version updates (ignored by Dependabot)
+  - Minor version updates for production dependencies
+  - Updates affecting core Azure SDK packages
+
+**Ignored Updates:**
+- Major version updates (`semver-major`) ignored for all ecosystems
+- Requires manual evaluation and testing in feature branch
+- Team monitors release notes and plans major updates separately
+
+### 12.2 Secret Scanning
+
 - Secret scanning pre-commit (detect-secrets) & CI.
 - PR security checklist: endpoints, new roles, data exposure changes.
 

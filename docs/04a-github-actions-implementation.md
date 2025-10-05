@@ -1316,7 +1316,192 @@ Check platform status: https://www.githubstatus.com/
 
 ---
 
-## 10. Additional Resources
+## 10. Dependency Management (Dependabot)
+
+### 10.1 Overview
+
+**Purpose:** Automate dependency updates across all repositories with risk-based scheduling to ensure rapid security patching (HIPAA compliance) while managing team review capacity.
+
+**Implementation:** Dependabot configuration deployed to all 5 strategic repositories with auto-merge workflow for low-risk updates.
+
+### 10.2 Update Schedule Matrix
+
+| Repository | NuGet Updates | GitHub Actions | npm | Open PR Limit | Priority |
+|------------|---------------|----------------|-----|---------------|----------|
+| **edi-platform-core** | Daily (2 AM ET) | Weekly (Mon 3 AM) | Weekly (Tue 2 AM) | 10 | HIGH |
+| **edi-mappers** | Weekly (Wed 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+| **edi-connectors** | Weekly (Thu 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+| **edi-partner-configs** | N/A | Monthly | Monthly | 3 | LOW |
+| **edi-data-platform** | Weekly (Fri 2 AM) | Weekly (Mon 3 AM) | N/A | 5 | MEDIUM |
+
+**Rationale:**
+- **Daily** for edi-platform-core: Security-critical platform requires rapid patching
+- **Weekly** for application repos: Balanced between security and team capacity
+- **Monthly** for config repo: Minimal dependencies, infrequent changes
+- **Staggered days**: Distributes PR workload across the week
+- **Weekend execution**: Minimizes disruption during business hours (2-3 AM ET)
+
+### 10.3 Package Grouping Strategy
+
+Dependabot groups related packages to reduce PR volume:
+
+```yaml
+groups:
+  azure-sdk:
+    patterns:
+      - "Azure.*"
+      - "Microsoft.Azure.*"
+  azure-functions:
+    patterns:
+      - "Microsoft.Azure.Functions.*"
+      - "Microsoft.Azure.WebJobs.*"
+  microsoft-extensions:
+    patterns:
+      - "Microsoft.Extensions.*"
+  testing:
+    patterns:
+      - "xunit*"
+      - "Moq"
+      - "FluentAssertions*"
+      - "coverlet*"
+  microsoft-data:  # data-platform only
+    patterns:
+      - "Microsoft.Data.*"
+      - "Microsoft.SqlServer.*"
+```
+
+**Benefits:**
+- Reduces number of PRs by 50-70%
+- Ensures compatible package versions update together
+- Simplifies testing (related packages tested as a unit)
+
+### 10.4 Auto-Merge Workflow
+
+**File:** `.github/workflows/dependabot-auto-merge.yml`
+
+**Trigger:** Pull requests from `dependabot[bot]`
+
+**Low-Risk Criteria (Auto-Approved):**
+1. **Patch version updates** (e.g., 1.2.3 → 1.2.4)
+   - Typically bug fixes and security patches
+   - Very low risk of breaking changes
+2. **Minor updates for test dependencies**
+   - Packages: xunit, Moq, FluentAssertions, coverlet
+   - Only affects test code, not production
+3. **Minor updates for GitHub Actions**
+   - Well-maintained, extensively tested by GitHub
+   - Minimal risk to CI/CD pipelines
+
+**High-Risk Handling (Manual Review):**
+- Major version updates (ignored by Dependabot config)
+- Minor version updates for production dependencies
+- Updates to core Azure SDK packages
+
+**Workflow Actions:**
+
+```yaml
+jobs:
+  auto-approve:
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Assess Risk Level
+        # Checks update type: patch, minor, major
+      - name: Auto-Approve if Low-Risk
+        # Uses GitHub CLI to approve PR
+      - name: Enable Auto-Merge
+        # Uses GraphQL to enable auto-merge with squash
+      - name: Add Labels
+        # Adds 'auto-merge' or 'manual-review' label
+      - name: Comment if High-Risk
+        # Notifies team of manual review requirement
+```
+
+### 10.5 Security Update Process
+
+**HIPAA Requirement:** Security patches must be applied within 30 days.
+
+**Workflow:**
+1. Dependabot creates PR with `security` label
+2. Auto-merge workflow checks if security patch
+3. If patch version: Auto-approve and merge immediately
+4. If minor/major: Priority manual review (same day)
+5. Deploy to dev environment within 24 hours
+6. Test in dev for 24 hours, monitor for issues
+7. Promote to test environment (48 hour soak)
+8. Promote to prod within 1 week of PR creation
+
+**Monitoring:** Weekly security update compliance report
+
+### 10.6 Ignored Updates
+
+**Major version updates** (`semver-major`) are ignored by Dependabot:
+
+```yaml
+ignore:
+  - dependency-name: "*"
+    update-types: ["version-update:semver-major"]
+```
+
+**Rationale:**
+- Major updates often include breaking changes
+- Require manual testing and code modifications
+- Team evaluates impact before upgrading
+- Reduces noise in Dependabot PRs
+
+**Manual Major Update Process:**
+1. Monitor release notes for major versions
+2. Create feature branch for testing
+3. Update dependencies manually
+4. Run full regression test suite
+5. Perform integration testing
+6. Merge after successful validation
+
+### 10.7 Operational Procedures
+
+**Weekly Review (Monday AM):**
+- Review weekend Dependabot PRs
+- Check CI status on all open PRs
+- Batch approve low-risk updates
+- Prioritize security updates
+
+**Monthly Metrics:**
+- Total PRs created vs merged
+- Average time to merge by risk level
+- Security update compliance (target: 100%)
+- Top 10 most frequently updated packages
+
+**Troubleshooting:**
+
+**Issue: Too many PRs**
+- Reduce `open-pull-requests-limit` in dependabot.yml
+- Increase package grouping
+- Change schedule to less frequent
+
+**Issue: CI failures on Dependabot PRs**
+- Review dependency changelog for breaking changes
+- Update code to accommodate changes
+- Push fix directly to Dependabot PR branch
+
+**Issue: Auto-merge not working**
+- Verify branch protection allows auto-merge
+- Check GitHub Actions permissions
+- Ensure CI checks are passing
+
+### 10.8 Configuration Files
+
+**Location:** Each repository contains:
+- `.github/dependabot.yml` - Dependabot configuration
+- `.github/workflows/dependabot-auto-merge.yml` - Auto-merge workflow (optional)
+
+**Deployment:** Configurations deployed via PowerShell script:
+```powershell
+# Deploy to all repositories
+.\deploy-dependabot-configs.ps1 -CommitAndPush
+```
+
+---
+
+## 11. Additional Resources
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Azure Login Action](https://github.com/Azure/login)
@@ -1324,6 +1509,7 @@ Check platform status: https://www.githubstatus.com/
 - [Bicep Documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/)
 - [PSRule for Azure](https://azure.github.io/PSRule.Rules.Azure/)
 - [OIDC with Azure](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure)
+- [Dependabot Documentation](https://docs.github.com/en/code-security/dependabot)
 
 ---
 
