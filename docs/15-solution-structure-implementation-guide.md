@@ -23,7 +23,7 @@ The solution follows a **5-layer architecture** designed for:
 | **Cross-Cutting** | Security, observability, configuration management | Compliance, governance, shared utilities |
 | **Outbound Assembly** | Acknowledgment generation, control number management | SLA tracking, partner delivery |
 | **Destination Systems** | Business logic processing, domain-specific workflows | Data persistence, outcome signaling |
-| **Routing & Event Hub** | Message routing, event correlation | Load balancing, dead letter handling |
+| **Routing & Service Bus** | Message routing, event correlation | Load balancing, dead letter handling |
 | **Core Platform** | File ingestion, storage management, infrastructure | Validation, metadata extraction |
 
 ## 3. Core Platform Layer (`/src/platform/`)
@@ -83,7 +83,7 @@ The solution follows a **5-layer architecture** designed for:
 - **Event Grid**: Low-latency event-driven triggers
 - **Azure Monitor**: Centralized logging and metrics collection
 
-## 4. Routing & Event Hub Layer (`/src/routing/`)
+## 4. Routing & Service Bus Layer (`/src/routing/`)
 
 ### 4.1 Structure
 

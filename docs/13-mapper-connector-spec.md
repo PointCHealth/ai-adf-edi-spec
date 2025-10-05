@@ -743,7 +743,7 @@ CREATE INDEX IX_Correlation_ClaimSystem ON CorrelationMapping(ClaimSystemID, Sta
                                      └─> [Outbound X12 File (271)]
 ```
 
-**Implementation**: Mapper and Connector Functions emit lineage events to Event Hub; scheduled Azure Function processes events and calls Purview REST API to create custom lineage links.
+**Implementation**: Mapper and Connector Functions emit lineage events to Service Bus topic; scheduled Azure Function processes events and calls Purview REST API to create custom lineage links.
 
 ---
 

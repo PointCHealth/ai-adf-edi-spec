@@ -33,7 +33,7 @@ This document provides the master implementation plan for building, testing, and
 The platform consists of **5 architectural layers** implemented across **15+ distinct projects**:
 
 - **Core Platform Layer**: File ingestion, storage management, validation
-- **Routing & Event Hub Layer**: Transaction routing, message distribution
+- **Routing & Service Bus Layer**: Transaction routing, message distribution
 - **Trading Partner Integration Layer**: Bidirectional adapters for partner systems
 - **Outbound Assembly Layer**: Acknowledgment generation, control numbers
 - **Cross-Cutting Concerns**: Security, observability, configuration management

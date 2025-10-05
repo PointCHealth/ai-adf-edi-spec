@@ -19,7 +19,7 @@ This platform implements a **5-layer architecture** optimized for healthcare EDI
 │              Destination Systems Layer                      │
 │     (Eligibility, Claims, Enrollment, Remittance)         │
 ├─────────────────────────────────────────────────────────────┤
-│               Routing & Event Hub Layer                     │
+│               Routing & Service Bus Layer                   │
 │           (Message Routing, Event Correlation)             │
 ├─────────────────────────────────────────────────────────────┤
 │                 Core Platform Layer                         │
