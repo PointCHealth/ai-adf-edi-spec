@@ -1,8 +1,62 @@
-# SQL Database Projects - Quick Reference
+# SQL Database Projects - DACPAC Repositories
 
-This directory contains complete SQL database implementations for the EDI platform.
+⚠️ **IMPORTANT CHANGE**: The SQL databases have been migrated to dedicated SQL Server Database Projects (DACPAC) in separate repositories.
 
-## Databases
+## New Repository Structure
+
+### ✅ Control Numbers Database (Production Ready)
+- **Repository**: `c:\repos\edi-database-controlnumbers`
+- **Project File**: `EDI.ControlNumbers.Database.sqlproj`
+- **Output**: `EDI_ControlNumbers.dacpac`
+- **Status**: ✅ Complete and building successfully
+- **Purpose**: Manages EDI control number sequences (ISA13, GS06, ST02) with optimistic concurrency
+
+### 🔄 Event Store Database (Conversion In Progress)
+- **Repository**: `c:\repos\edi-database-eventstore`
+- **Project File**: `EDI.EventStore.Database.sqlproj`
+- **Output**: `EDI_EventStore.dacpac`
+- **Status**: 🔄 Conversion in progress (~3 hours remaining)
+- **Purpose**: Event sourcing for 834 enrollment transactions with projections
+
+## Why DACPAC Projects?
+
+We've moved from manual SQL scripts to SQL Server Database Projects for:
+
+1. ✅ **Schema Version Control** - Track changes with proper Git diff/merge
+2. ✅ **Automated Deployment** - Single SqlPackage command vs. manual script execution
+3. ✅ **Drift Detection** - Compare deployed database vs. source of truth
+4. ✅ **CI/CD Integration** - Native support in Azure DevOps and GitHub Actions
+5. ✅ **IDE IntelliSense** - Full support in VS Code and Visual Studio
+6. ✅ **Refactoring Safety** - Automatic dependency tracking and validation
+
+## Quick Start - Control Numbers Database
+
+```powershell
+# Build DACPAC
+cd c:\repos\edi-database-controlnumbers\EDI.ControlNumbers.Database
+dotnet build
+
+# Deploy to Azure SQL
+SqlPackage /Action:Publish `
+  /SourceFile:"bin\Debug\EDI_ControlNumbers.dacpac" `
+  /TargetServerName:"sql-edi-dev.database.windows.net" `
+  /TargetDatabaseName:"EDI_ControlNumbers" `
+  /TargetUser:"sqladmin"
+```
+
+## Legacy Documentation Below
+
+The content below documents the original SQL scripts in this directory.  
+⚠️ These scripts are now **DEPRECATED** and maintained for reference only.  
+✅ Use the DACPAC repositories above for all new deployments.
+
+---
+
+# SQL Database Projects - Quick Reference (Legacy)
+
+This directory contains the original SQL database migration scripts for the EDI platform.
+
+## Databases (Legacy Scripts)
 
 ### 1. Control Numbers Database (`EDI_ControlNumbers`)
 **Purpose:** Manages EDI control number sequences (ISA13, GS06, ST02) for outbound acknowledgments
