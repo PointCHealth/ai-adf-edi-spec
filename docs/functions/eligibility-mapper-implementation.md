@@ -13,52 +13,56 @@
 - [x] Created project structure (Configuration, Models, Services, Functions)
 - [x] Copied base `.csproj` from InboundRouter as template
 
-### 🚧 Phase 2: Configuration Models (In Progress)
-- [ ] Create `MappingOptions.cs` - Mapping configuration
-- [ ] Update `.csproj` with correct package references
-- [ ] Create `appsettings.json` with EligibilityMapper settings
+### ✅ Phase 2: Configuration Models (Complete)
+- [x] Create `MappingOptions.cs` - Mapping configuration
+- [x] Update `.csproj` with correct package references (namespace updated to HealthcareEDI.EligibilityMapper)
+- [x] Create `appsettings.json` with EligibilityMapper settings
+- [x] Create `host.json` with Service Bus configuration
+- [x] Create `Program.cs` with DI setup
 
-### ⏭️ Phase 3: Data Models (Not Started)
-- [ ] Create `EligibilityRequest.cs` - 270 internal model
-- [ ] Create `EligibilityResponse.cs` - 271 internal model
-- [ ] Create `RoutingMessage.cs` - Service Bus message model
+### ✅ Phase 3: Data Models (Complete)
+- [x] Create `EligibilityRequest.cs` - 270 internal model with RequestMetadata
+- [x] Create `EligibilityResponse.cs` - 271 internal model with ResponseMetadata, Address, CoverageDetail
+- [x] Create `RoutingMessage.cs` - Service Bus message model
 
-### ⏭️ Phase 4: Mapping Service (Not Started)
-- [ ] Create `IEligibilityMappingService` interface
-- [ ] Implement `EligibilityMappingService` class
-- [ ] Implement X12 segment extraction methods:
-  - [ ] `ExtractTransactionReference` (TRN segment)
-  - [ ] `ExtractRequestDate` / `ExtractResponseDate` (BHT segment)
-  - [ ] `ExtractMemberId` (NM1*IL segment)
-  - [ ] `ExtractMemberNames` (NM1*IL segment)
-  - [ ] `ExtractMemberDateOfBirth` (DMG segment)
-  - [ ] `ExtractMemberGender` (DMG segment)
-  - [ ] `ExtractProviderNpi` (NM1*1P segment)
-  - [ ] `ExtractProviderName` (NM1*1P segment)
-  - [ ] `ExtractServiceDate` (DTP*291 segment)
-  - [ ] `ExtractServiceTypeCodes` (EQ segments - 270 only)
-  - [ ] `ExtractMemberAddress` (N3/N4 segments - 271 only)
-  - [ ] `ExtractCoverageDetails` (EB segments - 271 only)
-- [ ] Implement validation logic
-- [ ] Add partner-specific mapping overrides support
+### ✅ Phase 4: Mapping Service (Complete)
+- [x] Create `IEligibilityMappingService` interface (1,471 bytes)
+- [x] Implement `EligibilityMappingService` class (22,735 bytes)
+- [x] Implement X12 segment extraction methods:
+  - [x] `ExtractTransactionReference` (TRN segment)
+  - [x] `ExtractRequestDate` / `ExtractResponseDate` (BHT segment)
+  - [x] `ExtractMemberId` (NM1*IL segment)
+  - [x] `ExtractMemberNames` (NM1*IL segment for both request/response)
+  - [x] `ExtractMemberDateOfBirth` (DMG segment for both request/response)
+  - [x] `ExtractMemberGender` (DMG segment for both request/response)
+  - [x] `ExtractProviderNpi` (NM1*1P segment)
+  - [x] `ExtractProviderName` (NM1*1P segment for both request/response)
+  - [x] `ExtractServiceDate` (DTP*291 segment)
+  - [x] `ExtractServiceTypeCodes` (EQ segments - 270 only)
+  - [x] `ExtractMemberAddress` (N3/N4 segments - 271 only)
+  - [x] `ExtractCoverageDetails` (EB segments - 271 only)
+- [x] Implement validation logic (ValidateRequest, ValidateResponse)
+- [x] Add helper methods (ParseX12Date, ParseX12DateTime, GetServiceTypeName)
+- [x] Add partner-specific mapping overrides support (configured in MappingOptions)
 
-### ⏭️ Phase 5: Function Implementation (Not Started)
-- [ ] Create `MapperFunction.cs`
-- [ ] Implement Service Bus trigger (`ProcessEligibilityTransaction`)
-- [ ] Add blob download logic
-- [ ] Add X12 parsing
-- [ ] Add mapping orchestration (270 vs 271 routing)
-- [ ] Add JSON serialization
-- [ ] Add output blob upload
-- [ ] Add error handling and logging
+### ✅ Phase 5: Function Implementation (Complete)
+- [x] Create `MapperFunction.cs` (7,847 bytes)
+- [x] Implement Service Bus trigger listening to `eligibility-mapper-queue`
+- [x] Add blob download logic (DownloadX12FileAsync)
+- [x] Add X12 parsing (ParseX12TransactionAsync using IX12Parser)
+- [x] Add mapping orchestration (270 vs 271 routing logic)
+- [x] Add JSON serialization with camelCase property naming
+- [x] Add output blob upload (UploadMappedDataAsync to `mapped` container)
+- [x] Add error handling with retry and dead-letter logic (max 3 delivery attempts)
+- [x] Add comprehensive logging at all stages
 
-### ⏭️ Phase 6: Dependency Injection (Not Started)
-- [ ] Create `Program.cs`
-- [ ] Register Azure SDK clients (BlobServiceClient, ServiceBusClient)
-- [ ] Register EDI services (IX12Parser, BlobStorageService)
-- [ ] Register EligibilityMapper services (IEligibilityMappingService)
-- [ ] Configure options (MappingOptions)
-- [ ] Add Application Insights
+### ✅ Phase 6: Dependency Injection (Complete)
+- [x] Create `Program.cs` with FunctionsApplication.CreateBuilder pattern
+- [x] Register Azure SDK clients (BlobServiceClient, ServiceBusClient as singletons)
+- [x] Register EDI services (IX12Parser, BlobStorageService as scoped)
+- [x] Register EligibilityMapper services (IEligibilityMappingService as scoped)
+- [x] Configure options (MappingOptions from appsettings.json)
+- [x] Add Application Insights (telemetry worker service)
 
 ### ⏭️ Phase 7: Testing (Not Started)
 - [ ] Create `EligibilityMapper.Tests` project
@@ -84,35 +88,44 @@
 
 ```
 functions/EligibilityMapper.Function/
-├── Configuration/               (created, empty)
-├── Models/                      (created, empty)
-├── Services/                    (created, empty)
-├── Functions/                   (created, empty)
-└── EligibilityMapper.Function.csproj  (copied from InboundRouter)
+├── Configuration/
+│   └── MappingOptions.cs                    ✅ Created
+├── Models/
+│   ├── EligibilityRequest.cs                ✅ Created
+│   ├── EligibilityResponse.cs               ✅ Created
+│   └── RoutingMessage.cs                    ✅ Created
+├── Services/
+│   ├── IEligibilityMappingService.cs        ✅ Created (1,471 bytes)
+│   └── EligibilityMappingService.cs         ✅ Created (22,735 bytes, 15+ methods)
+├── Functions/
+│   └── MapperFunction.cs                    ✅ Created (7,847 bytes)
+├── EligibilityMapper.Function.csproj        ✅ Updated
+├── Program.cs                               ✅ Created & Updated
+├── host.json                                ✅ Created
+└── appsettings.json                         ✅ Created
 ```
 
 ---
 
 ## Next Immediate Actions
 
-### 1. Create MappingOptions Configuration (Next)
-File: `Configuration/MappingOptions.cs`
-
-### 2. Update Project File (Next)
-File: `EligibilityMapper.Function.csproj`
-- Update assembly name
-- Update root namespace
-- Verify package references
-
-### 3. Create Data Models
+### 7. Create Unit Tests (Next - High Priority)
 Files:
-- `Models/EligibilityRequest.cs`
-- `Models/EligibilityResponse.cs`
-- `Models/Address.cs`
-- `Models/CoverageDetail.cs`
-- `Models/RequestMetadata.cs`
-- `Models/ResponseMetadata.cs`
-- `Models/RoutingMessage.cs`
+- Create `tests/EligibilityMapper.Tests` project
+- Create `EligibilityMappingServiceTests.cs` with tests for all segment extraction methods
+- Create test fixtures with sample X12 270/271 data
+
+Focus: Validate mapping logic with comprehensive test coverage (>80%)
+
+### 8. Create Integration Tests
+- Test end-to-end flow: Service Bus → MapperFunction → Blob Storage
+- Test with real X12 samples from Phase 3 Quick Start guide
+- Verify JSON output format and structure
+
+### 9. Deploy and Test
+- Create `local.settings.json` for local development
+- Deploy to dev environment
+- Run end-to-end validation
 
 ---
 
@@ -222,11 +235,12 @@ mapped/
 ## Success Criteria
 
 ✅ **EligibilityMapper is complete when:**
-- [ ] All configuration models created
-- [ ] All data models created
-- [ ] Mapping service fully implemented
-- [ ] Function triggers configured
-- [ ] DI registration complete
+- [x] All configuration models created (MappingOptions)
+- [x] All data models created (EligibilityRequest, EligibilityResponse, RoutingMessage)
+- [x] Mapping service fully implemented (IEligibilityMappingService, EligibilityMappingService with 15+ methods)
+- [x] Function triggers configured (MapperFunction with Service Bus trigger)
+- [x] DI registration complete (Program.cs)
+- [x] Build successful (dotnet build completes without errors)
 - [ ] Unit tests > 80% coverage
 - [ ] Integration tests pass
 - [ ] Processes 270 transactions successfully
@@ -234,6 +248,14 @@ mapped/
 - [ ] Handles errors gracefully
 - [ ] Deployed to dev environment
 - [ ] End-to-end test successful (blob → router → mapper → storage)
+
+**Progress: 6 of 13 criteria complete (46%)**
+
+**Code Statistics:**
+- Total lines: ~31,000 bytes across 11 files
+- Mapping service: 22,735 bytes (570+ lines, 15+ extraction methods)
+- Function implementation: 7,847 bytes (260+ lines)
+- Build status: ✅ Successful
 
 ---
 
