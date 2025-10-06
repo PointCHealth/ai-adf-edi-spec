@@ -60,8 +60,10 @@
 
 | ID | Document | Status | Summary |
 |----|----------|--------|---------|
-| 13 | [13-database-project-control-numbers.md](13-database-project-control-numbers.md) | Agent-Orchestrated Outline | Control number store schema, deployment scripts, validation |
-| 14 | [14-database-project-enrollment-eventstore.md](14-database-project-enrollment-eventstore.md) | Agent-Orchestrated Outline | Enrollment event sourcing design, replay strategy, performance |
+| 13 | [13-database-project-control-numbers.md](13-database-project-control-numbers.md) | ✅ COMPLETE | Control number store schema, deployment scripts, validation |
+| 14 | [14-database-project-enrollment-eventstore.md](14-database-project-enrollment-eventstore.md) | ✅ COMPLETE | Enrollment event sourcing design, replay strategy, performance |
+| 26 | [26-sql-database-projects-complete-guide.md](26-sql-database-projects-complete-guide.md) | ✅ NEW | Complete implementation guide (63 pages): schemas, procedures, views, deployment, testing, monitoring |
+| - | [SQL_DATABASE_PROJECTS_SUMMARY.md](SQL_DATABASE_PROJECTS_SUMMARY.md) | ✅ NEW | Session summary: 9 files created, 2,849 lines, ready for deployment |
 
 ### Phase 5 - Outbound Assembly
 
@@ -78,6 +80,9 @@
 | 18 | [18-configuration-projects.md](18-configuration-projects.md) | Agent-Orchestrated Outline | Partner and mapping configuration repositories, CI/CD strategy |
 | 19 | [19-partner-configuration-schema.md](19-partner-configuration-schema.md) | Agent-Orchestrated Outline | Canonical partner metadata schema and credential model |
 | 20 | [20-mapping-rules-specification.md](20-mapping-rules-specification.md) | Agent-Orchestrated Outline | Mapping rule schema, transformation functions, validation rules |
+| 24 | [24-partner-config-integration-guide.md](24-partner-config-integration-guide.md) | ✅ COMPLETE | Integration guide (1,000+ lines): step-by-step, code examples, monitoring |
+| 25 | [25-partner-config-integration-checklist.md](25-partner-config-integration-checklist.md) | ✅ COMPLETE | Quick-start checklist (600+ lines): 8 phases, time estimates, validation |
+| - | [PARTNER_CONFIG_INTEGRATION_SUMMARY.md](PARTNER_CONFIG_INTEGRATION_SUMMARY.md) | ✅ COMPLETE | Integration summary (400+ lines): architecture, monitoring, roadmap |
 
 ### Quality Engineering
 

@@ -1,0 +1,29 @@
+{
+  "partnerCode": "PARTNERB",
+  "name": "Partner B Payer",
+  "partnerType": "EXTERNAL",
+  "status": "active",
+  "expectedTransactions": [
+    "270",
+    "271"
+  ],
+  "dataFlow": {
+    "direction": "BIDIRECTIONAL"
+  },
+  "routingPriorityOverrides": {},
+  "endpoint": {
+    "type": "SERVICE_BUS",
+    "serviceBus": {
+      "topicName": "partnerb-edi-topic",
+      "subscriptionName": "eligibility-sub"
+    }
+  },
+  "acknowledgments": {
+    "expectsTA1": false,
+    "expects999": true
+  },
+  "sla": {
+    "ingestionLatencySecondsP95": 60,
+    "ack999Minutes": 30
+  }
+}

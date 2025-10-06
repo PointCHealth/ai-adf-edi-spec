@@ -1,0 +1,37 @@
+{
+  "partnerCode": "INTERNAL-CLAIMS",
+  "name": "Internal Claims Processing System",
+  "partnerType": "INTERNAL",
+  "status": "active",
+  "expectedTransactions": [
+    "837",
+    "277"
+  ],
+  "dataFlow": {
+    "direction": "OUTBOUND"
+  },
+  "routingPriorityOverrides": {},
+  "endpoint": {
+    "type": "DATABASE",
+    "database": {
+      "connectionStringSecretName": "claims-db-connection",
+      "stagingTable": "claims_staging"
+    }
+  },
+  "acknowledgments": {
+    "expectsTA1": false,
+    "expects999": false
+  },
+  "sla": {
+    "ingestionLatencySecondsP95": 10,
+    "ack999Minutes": 0,
+    "responseLatencyMinutes": 5
+  },
+  "integration": {
+    "adapterType": "EVENT_SOURCING",
+    "customAdapterConfig": {
+      "eventStoreConnectionString": "claims-eventstore",
+      "snapshotInterval": 10
+    }
+  }
+}

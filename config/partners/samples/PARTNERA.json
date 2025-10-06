@@ -1,0 +1,38 @@
+{
+  "partnerCode": "PARTNERA",
+  "name": "Partner A Healthcare",
+  "partnerType": "EXTERNAL",
+  "status": "active",
+  "expectedTransactions": [
+    "270",
+    "271",
+    "837",
+    "835"
+  ],
+  "dataFlow": {
+    "direction": "BIDIRECTIONAL"
+  },
+  "routingPriorityOverrides": {
+    "270": "high",
+    "837": "standard"
+  },
+  "endpoint": {
+    "type": "SFTP",
+    "sftp": {
+      "host": "sftp.partnera.com",
+      "port": 22,
+      "username": "edi_user",
+      "homePath": "/inbound",
+      "pgpRequired": true
+    }
+  },
+  "acknowledgments": {
+    "expectsTA1": true,
+    "expects999": true
+  },
+  "sla": {
+    "ingestionLatencySecondsP95": 30,
+    "ack999Minutes": 15,
+    "responseLatencyMinutes": 60
+  }
+}

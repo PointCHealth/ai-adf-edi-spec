@@ -1,0 +1,32 @@
+{
+  "partnerCode": "TEST001",
+  "name": "Test Partner (Inactive)",
+  "partnerType": "EXTERNAL",
+  "status": "inactive",
+  "expectedTransactions": [
+    "270",
+    "271"
+  ],
+  "dataFlow": {
+    "direction": "BIDIRECTIONAL"
+  },
+  "routingPriorityOverrides": {},
+  "endpoint": {
+    "type": "SFTP",
+    "sftp": {
+      "host": "localhost",
+      "port": 2222,
+      "username": "test",
+      "homePath": "/test",
+      "pgpRequired": false
+    }
+  },
+  "acknowledgments": {
+    "expectsTA1": true,
+    "expects999": true
+  },
+  "sla": {
+    "ingestionLatencySecondsP95": 300,
+    "ack999Minutes": 120
+  }
+}
